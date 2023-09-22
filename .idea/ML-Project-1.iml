@@ -7,7 +7,7 @@
       <sourceFolder url="file://$MODULE_DIR$/Tools" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Tools/toolbox_02450" isTestSource="false" />
     </content>
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="zero" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
