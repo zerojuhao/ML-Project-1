@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.linalg import svd
-import get_sta_info
-import plot_sta
-import one_hot
+import get_sta_info # calculate mean median min max of basic statistics
+import plot_sta # plot basic statistics table
+import one_hot # apply one-out-of-k to traget
 import seaborn as sns
 
 
@@ -202,8 +202,6 @@ plt.title('Correlation Heatmap')
 plt.tight_layout()  # Ensure everything fits within the frame
 plt.show()
 
-
-
 ###########################
 # plot Correlation table  #
 ###########################
@@ -232,19 +230,13 @@ for i in range(len(corr_matrix.index)):
             if not duplicate:   
                 high_corr_df = pd.concat([high_corr_df, pd.DataFrame({'Feature': [label1], 'Collinearity with': [label2], 'Correlation': [correlation]})], ignore_index=True)
 
-high_corr_df = np.round(high_corr_df,4) # set number like 0.000
-
-print("Correlation > 0.7")
-print(high_corr_df)
+high_corr_df = np.round(high_corr_df,4) # set number like 0.0000
 
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.axis('tight')
 ax.axis('off')
 ax.table(cellText=high_corr_df.values, colLabels=high_corr_df.columns, cellLoc='center', loc='center', colColours=['#f3f3f3']*high_corr_df.shape[1])
 plt.show()
-
-
-
 
 ###########################
 # plot distribution image #
