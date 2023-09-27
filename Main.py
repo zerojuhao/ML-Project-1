@@ -291,7 +291,6 @@ for i, feature in enumerate(num_features[len(num_features)//2:]):
 
 # Reduce the vertical gap between histograms
 plt.tight_layout(h_pad=0)
-
 plt.show()
 
 
