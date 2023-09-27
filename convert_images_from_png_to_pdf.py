@@ -6,4 +6,4 @@ def png_to_pdf(png_image_path, pdf_file_path):
     pdf_image.save(pdf_file_path, 'PDF', resolution=100.0)
 
 if __name__ == "__main__":
-    png_to_pdf('C:/Users/57021/Desktop/ML-Project-1/images/DTU_LOGO.png', 'C:/Users/57021/Desktop/ML-Project-1/images/DTU_LOGO.pdf')
+    png_to_pdf('C:/Users/57021/Desktop/ML-Project-1/images/heatmap.png', 'C:/Users/57021/Desktop/ML-Project-1/images/heatmap.pdf')
