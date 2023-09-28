@@ -36,7 +36,7 @@ basic_sta_info = pd.DataFrame(rounded_df_basic_info.T, index = attributeNames, c
 basic_sta_info = basic_sta_info.applymap(lambda x: f'{x:.3f}'.rstrip('0').rstrip('.') if isinstance(x, (float, np.float64)) else x)
 
 # divide data into groups
-demographic_data = basic_sta_info.iloc[[0,7,13,19,20]]
+demographic_data = basic_sta_info.iloc[[0,17,7,13,19,20]]
 socioeconomics_data = basic_sta_info.iloc[[9,8,11,10,14,15,16,18]]
 macroeconomics_data = basic_sta_info.iloc[[33,34,35]]
 academic_data_enrollment = basic_sta_info.iloc[[1,2,3,4,5]]
@@ -47,7 +47,7 @@ academic_data_target.iloc[0,2] = "Graduate"
 academic_data_target = academic_data_target.drop(columns = "Mean")
 
 # plot tables
-# plot_sta.plot_table(demographic_data)
+plot_sta.plot_table(demographic_data)
 # plot_sta.plot_table(socioeconomics_data)
 # plot_sta.plot_table(macroeconomics_data)
 # plot_sta.plot_table(academic_data_enrollment)
