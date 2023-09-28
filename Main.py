@@ -17,6 +17,7 @@ classLabels = csv.values[:,-1]
 classNames = sorted(set(classLabels))
 classDict = dict(zip(classNames, range(3)))
 
+
 # Extract vector y, convert to NumPy array
 y = np.asarray([classDict[value] for value in classLabels])
 df = np.array(csv.iloc[:,:-1])
@@ -42,18 +43,19 @@ macroeconomics_data = basic_sta_info.iloc[[33,34,35]]
 academic_data_enrollment = basic_sta_info.iloc[[1,2,3,4,5]]
 academic_data_1st = basic_sta_info.iloc[[21,22,23,24,25,26]]
 academic_data_2st = basic_sta_info.iloc[[27,28,29,30,31,32]]
-academic_data_target = pd.DataFrame(get_sta_info.basic_info(y).T ,index = ["Target"], columns = ['Mean','Median','Dispersion','Min','Max'])
-academic_data_target.iloc[0,2] = "Graduate"
-academic_data_target = academic_data_target.drop(columns = "Mean")
 
+target_basic = np.array([np.median(y, axis=0), np.std(y, axis=0)])
+academic_data_target = np.round(target_basic,3) # set number like 0.000
+academic_data_target = pd.DataFrame(academic_data_target.reshape(1, 2), index=['Target'], columns = ['Median', 'Dispersion'])
+academic_data_target.iloc[0,0] = "Graduate"
 # plot tables
 plot_sta.plot_table(demographic_data)
-# plot_sta.plot_table(socioeconomics_data)
-# plot_sta.plot_table(macroeconomics_data)
-# plot_sta.plot_table(academic_data_enrollment)
-# plot_sta.plot_table(academic_data_1st)
-# plot_sta.plot_table(academic_data_2st)
-# plot_sta.plot_table(academic_data_target)
+plot_sta.plot_table(socioeconomics_data)
+plot_sta.plot_table(macroeconomics_data)
+plot_sta.plot_table(academic_data_enrollment)
+plot_sta.plot_table(academic_data_1st)
+plot_sta.plot_table(academic_data_2st)
+plot_sta.plot_table(academic_data_target)
 
 
 #############
@@ -150,7 +152,7 @@ df = df.drop('Target', axis=1)
 df = df.drop('Previous qualification (grade)', axis=1)
 
 new_order = [#demographic_data#
-             'Marital status', 'Nacionality', 'Displaced','Gender','Age at enrollment','International',
+             'Marital status', 'Nationality', 'Displaced','Gender','Age at enrollment','International',
              #socioeconomics_data#
              "Mother's qualification","Father's qualification","Mother's occupation","Father's occupation",
              'Educational special needs','Debtor','Tuition fees up to date','Scholarship holder',
