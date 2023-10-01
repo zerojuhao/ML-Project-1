@@ -40,7 +40,7 @@ basic_sta_info = basic_sta_info.applymap(lambda x: f'{x:.3f}'.rstrip('0').rstrip
 demographic_data = basic_sta_info.iloc[[0,7,13,17,19,20]]
 socioeconomics_data = basic_sta_info.iloc[[9,8,11,10,14,15,16,18]]
 macroeconomics_data = basic_sta_info.iloc[[33,34,35]]
-academic_data_enrollment = basic_sta_info.iloc[[1,2,3,4,5]]
+academic_data_enrollment = basic_sta_info.iloc[[1,2,3,4,5,6,12]]
 academic_data_1st = basic_sta_info.iloc[[21,22,23,24,25,26]]
 academic_data_2st = basic_sta_info.iloc[[27,28,29,30,31,32]]
 
@@ -149,7 +149,6 @@ plt.show()
 csv_file_path = 'dropout_data.csv'
 df = pd.read_csv('dropout_data.csv', sep=";")
 df = df.drop('Target', axis=1)
-df = df.drop('Previous qualification (grade)', axis=1)
 
 new_order = [#demographic_data#
              'Marital status', 'Nationality', 'Displaced','Gender','Age at enrollment','International',
@@ -159,7 +158,7 @@ new_order = [#demographic_data#
              #macroeconomics_data#
              'Unemployment rate','Inflation rate','GDP',
              #academic_data_enrollment#
-             'Application mode','Application order','Course','Daytime/evening attendance','Previous qualification',
+             'Application mode','Application order','Course','Daytime/evening attendance','Previous qualification','Previous qualification (grade)','Admission grade',
              #academic_data_1st#
              'Curricular units 1st sem (credited)','Curricular units 1st sem (enrolled)','Curricular units 1st sem (evaluations)',
              'Curricular units 1st sem (approved)','Curricular units 1st sem (grade)','Curricular units 1st sem (without evaluations)',

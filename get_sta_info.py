@@ -6,7 +6,7 @@ def basic_info(matrix):
     matrix = np.array(matrix)
 
 
-    for col_index in [0,1,3,5,6,7,8,9,10,11]:
+    for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
         current_column = matrix[:, col_index]
         unique_values = np.unique(current_column)
         unique_values.sort()
