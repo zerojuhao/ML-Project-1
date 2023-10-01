@@ -14,7 +14,7 @@ target = csv['Target']
 attributeNames = list(csv.columns.values)
 attributeNames = attributeNames[:-1]
 classLabels = csv.values[:,-1]
-classNames = sorted(set(classLabels))
+classNames = target.unique().tolist()
 classDict = dict(zip(classNames, range(3)))
 
 
@@ -79,7 +79,7 @@ Z = Y @ V
 # Compute variance explained by principal components
 rho = (S*S) / (S*S).sum()
 
-threshold = 0.9
+# threshold = 0.9
 
 ##########################
 # Plot variance explained#
@@ -87,7 +87,7 @@ threshold = 0.9
 plt.figure()
 plt.plot(range(1,len(rho)+1),rho,'x-')
 plt.plot(range(1,len(rho)+1),np.cumsum(rho),'o-')
-plt.plot([1,len(rho)],[threshold, threshold],'k--')
+# plt.plot([1,len(rho)],[threshold, threshold],'k--')
 plt.title('Variance explained by principal components')
 plt.xlabel('Principal component')
 plt.ylabel('Variance explained')
@@ -122,7 +122,7 @@ plt.xlabel('PCA1')
 plt.ylabel('PCA2')
 plt.legend()
 plt.grid(True)
-
+plt.show()
 # 
 
 fig, ax = plt.subplots(2, 1, figsize=(16, 12))
