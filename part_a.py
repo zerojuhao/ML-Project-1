@@ -46,12 +46,9 @@ pca_data = np.dot(U[:, :n_components], np.diag(S[:n_components]))
 # Create crossvalidation partition for evaluation
 # using stratification and 80 pct. split between training and test 
 K = 10
-X = pca_data
+X = data_matrix
 y = target_to_num
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.8, stratify=y)
-# Try to change the test_size to e.g. 50 % and 99 % - how does that change the 
-# effect of regularization? How does differetn runs of  test_size=.99 compare 
-# to eachother?
 
 # Standardize the training and set set based on training set mean and std
 mu = np.mean(X_train, 0)
@@ -62,7 +59,7 @@ X_test = (X_test - mu) / sigma
 
 # Fit regularized logistic regression model to training data to predict 
 # the type of wine
-lambda_interval = np.logspace(-30, 30, 100)
+lambda_interval = np.logspace(-10, 30, 100)
 train_error_rate = np.zeros(len(lambda_interval))
 test_error_rate = np.zeros(len(lambda_interval))
 coefficient_norm = np.zeros(len(lambda_interval))
