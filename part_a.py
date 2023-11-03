@@ -41,14 +41,14 @@ U, S, Vt = np.linalg.svd(pd.DataFrame(normalized_data), full_matrices=False)
 n_components = 22
 
 # 使用前n_components个奇异值和相应的左奇异向量来进行数据变换
-reduced_data = np.dot(U[:, :n_components], np.diag(S[:n_components]))
+pca_data = np.dot(U[:, :n_components], np.diag(S[:n_components]))
 
 # Create crossvalidation partition for evaluation
 # using stratification and 80 pct. split between training and test 
 K = 10
-X = reduced_data
+X = pca_data
 y = target_to_num
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, stratify=y)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.8, stratify=y)
 # Try to change the test_size to e.g. 50 % and 99 % - how does that change the 
 # effect of regularization? How does differetn runs of  test_size=.99 compare 
 # to eachother?
