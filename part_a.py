@@ -7,6 +7,7 @@ from sklearn.linear_model import Ridge
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
 
 data = pd.read_csv('dropout_data.csv', delimiter=';')
 # data.columns = [col.replace('\t', '') for col in data.columns]
@@ -33,15 +34,6 @@ normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation
 #############
 # apply PCA #
 #############
-#N, M = normalized_data.shape  # N = Number of data objects, M = Number of attributes
-#Y = normalized_data - np.ones((N, 1)) * normalized_data.mean(0)  # Centering the data
-#Y = Y * (1 / np.std(Y, 0))  # Standardize the data
-
-#U, S, Vh = svd(Y, full_matrices=False)  # Performing SVD
-#V = Vh.T  # The principal directions
-#pca1_coefficients = V[:, 0]
-#pca2_coefficients = V[:, 1]
-
 # 使用SVD分解数据矩阵
 U, S, Vt = np.linalg.svd(pd.DataFrame(normalized_data), full_matrices=False)
 
@@ -51,29 +43,71 @@ n_components = 22
 # 使用前n_components个奇异值和相应的左奇异向量来进行数据变换
 reduced_data = np.dot(U[:, :n_components], np.diag(S[:n_components]))
 
+# Create crossvalidation partition for evaluation
+# using stratification and 80 pct. split between training and test 
+K = 10
+X = reduced_data
+y = target_to_num
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, stratify=y)
+# Try to change the test_size to e.g. 50 % and 99 % - how does that change the 
+# effect of regularization? How does differetn runs of  test_size=.99 compare 
+# to eachother?
 
-# 定义一组不同的正则化参数 λ 的值
-alphas = np.logspace(-20, 20, 100)
+# Standardize the training and set set based on training set mean and std
+mu = np.mean(X_train, 0)
+sigma = np.std(X_train, 0)
 
-# 初始化一个列表来存储每个 λ 对应的交叉验证得分
-cross_val_scores = []
-# 划分训练集和测试集
-#X_train, X_test, y_train, y_test = train_test_split(reduced_data, one_hot_encoded, test_size=0.2, random_state=42)
+X_train = (X_train - mu) / sigma
+X_test = (X_test - mu) / sigma
 
+# Fit regularized logistic regression model to training data to predict 
+# the type of wine
+lambda_interval = np.logspace(-30, 30, 100)
+train_error_rate = np.zeros(len(lambda_interval))
+test_error_rate = np.zeros(len(lambda_interval))
+coefficient_norm = np.zeros(len(lambda_interval))
+for k in range(0, len(lambda_interval)):
+    mdl = LogisticRegression(penalty='l2', C=1/lambda_interval[k] )
+    
+    mdl.fit(X_train, y_train)
 
+    y_train_est = mdl.predict(X_train).T
+    y_test_est = mdl.predict(X_test).T
+    
+    train_error_rate[k] = np.sum(y_train_est != y_train) / len(y_train)
+    test_error_rate[k] = np.sum(y_test_est != y_test) / len(y_test)
 
-# 使用 K = 10 倍交叉验证来估计泛化误差
-for alpha in alphas:
-    # 创建 Ridge 回归模型，指定正则化参数
-    model = Ridge(alpha=alpha)
-    # 计算 K = 10 倍交叉验证的平均得分
-    scores = cross_val_score(model, reduced_data, one_hot_encoded, cv=10)
-    cross_val_scores.append(np.mean(scores))
+    w_est = mdl.coef_[0] 
+    coefficient_norm[k] = np.sqrt(np.sum(w_est**2))
 
-# 绘制 λ 作为函数的估计泛化误差图
-plt.plot(alphas, cross_val_scores)
-plt.xscale('log')
-plt.xlabel('λ (log scale)')
-plt.ylabel('Cross-Validation Score')
-plt.title('Estimated Generalization Error as a Function of λ')
-plt.show()
+min_error = np.min(test_error_rate)
+opt_lambda_idx = np.argmin(test_error_rate)
+opt_lambda = lambda_interval[opt_lambda_idx]
+
+plt.figure(figsize=(8,8))
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 用来正常显示中文标签
+plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号, 注意['SimHei']对应这句不行.
+#plt.plot(np.log10(lambda_interval), train_error_rate*100)
+#plt.plot(np.log10(lambda_interval), test_error_rate*100)
+#plt.plot(np.log10(opt_lambda), min_error*100, 'o')
+plt.semilogx(lambda_interval, train_error_rate*100)
+plt.semilogx(lambda_interval, test_error_rate*100)
+plt.semilogx(opt_lambda, min_error*100, 'o')
+plt.text(1e-8, 3, "Minimum test error: " + str(np.round(min_error*100,2)) + ' % at 1e' + str(np.round(np.log10(opt_lambda),2)))
+plt.xlabel('Regularization strength, $\log_{10}(\lambda)$')
+plt.ylabel('Error rate (%)')
+plt.title('Classification error')
+plt.legend(['Training error','Test error','Test minimum'],loc='upper right')
+plt.ylim([0, 70])
+plt.grid()
+plt.show()    
+
+plt.figure(figsize=(8,8))
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 用来正常显示中文标签
+plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号, 注意['SimHei']对应这句不行.
+plt.semilogx(lambda_interval, coefficient_norm,'k')
+plt.ylabel('L2 Norm')
+plt.xlabel('Regularization strength, $\log_{10}(\lambda)$')
+plt.title('Parameter vector L2 norm')
+plt.grid()
+plt.show()    
