@@ -35,17 +35,13 @@ normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation
 #############
 # apply PCA #
 #############
-# 使用SVD分解数据矩阵
 U, S, Vt = np.linalg.svd(pd.DataFrame(normalized_data), full_matrices=False)
-
-# 选择要保留的主成分的数量
 n_components = 22
-
-# 使用前n_components个奇异值和相应的左奇异向量来进行数据变换
 pca_data = np.dot(U[:, :n_components], np.diag(S[:n_components]))
 
-
-
+#############
+# apply PCA #
+#############
 # Create crossvalidation partition for evaluation
 # using stratification and 80 pct. split between training and test 
 K = 10
@@ -66,8 +62,8 @@ lambda_interval = np.logspace(-10, 10, 100)
 train_error_rate = np.zeros(len(lambda_interval))
 test_error_rate = np.zeros(len(lambda_interval))
 coefficient_norm = np.zeros(len(lambda_interval))
-# 初始化列表来存储每次验证的性能指标
 performance_metrics = []
+
 for k in range(0, len(lambda_interval)):
     mdl = LogisticRegression(penalty='l2', multi_class='multinomial', solver='lbfgs', C=1/lambda_interval[k] , max_iter=1000)
     
@@ -100,7 +96,6 @@ plt.ylabel('Mean Squared Error (MSE)')
 plt.title('Estimated Generalization Error vs. λ')
 plt.grid(True)
 plt.show()
-
 # 找到最小泛化误差对应的λ值
 optimal_alpha = lambda_interval[np.argmin(performance_metrics)]
 print(f"Optimal λ (alpha): {optimal_alpha}")
@@ -136,4 +131,3 @@ plt.xlabel('Regularization strength, $\log_{10}(\lambda)$')
 plt.title('Parameter vector L2 norm')
 plt.grid()
 plt.show()
-
