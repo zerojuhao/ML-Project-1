@@ -8,7 +8,8 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
-
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LinearRegression
 data = pd.read_csv('dropout_data.csv', delimiter=';')
 # data.columns = [col.replace('\t', '') for col in data.columns]
 data_no_target = data.drop(columns=['Target']) # delete target column
@@ -43,6 +44,8 @@ n_components = 22
 # 使用前n_components个奇异值和相应的左奇异向量来进行数据变换
 pca_data = np.dot(U[:, :n_components], np.diag(S[:n_components]))
 
+
+
 # Create crossvalidation partition for evaluation
 # using stratification and 80 pct. split between training and test 
 K = 10
@@ -59,12 +62,14 @@ X_test = (X_test - mu) / sigma
 
 # Fit regularized logistic regression model to training data to predict 
 # the type of wine
-lambda_interval = np.logspace(-10, 30, 100)
+lambda_interval = np.logspace(-10, 10, 100)
 train_error_rate = np.zeros(len(lambda_interval))
 test_error_rate = np.zeros(len(lambda_interval))
 coefficient_norm = np.zeros(len(lambda_interval))
+# 初始化列表来存储每次验证的性能指标
+performance_metrics = []
 for k in range(0, len(lambda_interval)):
-    mdl = LogisticRegression(penalty='l2', C=1/lambda_interval[k] )
+    mdl = LogisticRegression(penalty='l2', multi_class='multinomial', solver='lbfgs', C=1/lambda_interval[k] , max_iter=1000)
     
     mdl.fit(X_train, y_train)
 
@@ -76,6 +81,29 @@ for k in range(0, len(lambda_interval)):
 
     w_est = mdl.coef_[0] 
     coefficient_norm[k] = np.sqrt(np.sum(w_est**2))
+    # 在验证集上进行预测
+    y_pred = mdl.predict(X_test)
+    # 计算性能指标，例如均方误差（MSE）
+    mse = np.mean((y_pred - y_test) ** 2)
+    # 存储性能指标
+    performance_metrics.append(mse)
+    
+# 计算泛化误差的平均值
+generalization_error = np.mean(performance_metrics)
+print("Generalization Error: ", generalization_error)
+
+# 绘制 λ 函数的估计泛化误差图
+plt.figure(figsize=(8, 8))
+plt.semilogx(lambda_interval, performance_metrics, marker='o')
+plt.xlabel('λ')
+plt.ylabel('Mean Squared Error (MSE)')
+plt.title('Estimated Generalization Error vs. λ')
+plt.grid(True)
+plt.show()
+
+# 找到最小泛化误差对应的λ值
+optimal_alpha = lambda_interval[np.argmin(performance_metrics)]
+print(f"Optimal λ (alpha): {optimal_alpha}")
 
 min_error = np.min(test_error_rate)
 opt_lambda_idx = np.argmin(test_error_rate)
@@ -95,7 +123,7 @@ plt.xlabel('Regularization strength, $\log_{10}(\lambda)$')
 plt.ylabel('Error rate (%)')
 plt.title('Classification error')
 plt.legend(['Training error','Test error','Test minimum'],loc='upper right')
-plt.ylim([0, 70])
+plt.ylim([0, 100])
 plt.grid()
 plt.show()    
 
@@ -107,4 +135,5 @@ plt.ylabel('L2 Norm')
 plt.xlabel('Regularization strength, $\log_{10}(\lambda)$')
 plt.title('Parameter vector L2 norm')
 plt.grid()
-plt.show()    
+plt.show()
+
