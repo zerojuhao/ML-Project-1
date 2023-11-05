@@ -63,6 +63,10 @@ X = pca_data
 y = np.array(target_to_num)
 N, M = X.shape
 
+# Add offset attribute
+X = np.concatenate((np.ones((X.shape[0],1)),X),1)
+attributeNames = [u'Offset']+attributeNames
+M = M+1
 
 ## Crossvalidation
 # Create crossvalidation partition for evaluation
@@ -70,19 +74,9 @@ K = 10
 CV = model_selection.KFold(K, shuffle=True)
 lambdas = np.power(10.,range(-5,9))
 
-# Initialize variables
-#T = len(lambdas)
-Error_train = np.empty((K,1))
-Error_test = np.empty((K,1))
-Error_train_rlr = np.empty((K,1))
-Error_test_rlr = np.empty((K,1))
-Error_train_nofeatures = np.empty((K,1))
-Error_test_nofeatures = np.empty((K,1))
-w_rlr = np.empty((M,K))
 opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X, y, lambdas, K)
 
 # Display the results for the last cross-validation fold
-
 figure(K, figsize=(12,8))
 subplot(1,2,1)
 semilogx(lambdas,mean_w_vs_lambda.T[:,1:],'.-') # Don't plot the bias term
@@ -103,20 +97,3 @@ grid()
 
 plt.savefig("my_plot.png", dpi=500)  # 如果要保存图
 show()
-# Display results
-print('Linear regression without feature selection:')
-print('- Training error: {0}'.format(Error_train.mean()))
-print('- Test error:     {0}'.format(Error_test.mean()))
-print('- R^2 train:     {0}'.format((Error_train_nofeatures.sum()-Error_train.sum())/Error_train_nofeatures.sum()))
-print('- R^2 test:     {0}\n'.format((Error_test_nofeatures.sum()-Error_test.sum())/Error_test_nofeatures.sum()))
-print('Regularized linear regression:')
-print('- Training error: {0}'.format(Error_train_rlr.mean()))
-print('- Test error:     {0}'.format(Error_test_rlr.mean()))
-print('- R^2 train:     {0}'.format((Error_train_nofeatures.sum()-Error_train_rlr.sum())/Error_train_nofeatures.sum()))
-print('- R^2 test:     {0}\n'.format((Error_test_nofeatures.sum()-Error_test_rlr.sum())/Error_test_nofeatures.sum()))
-
-print('Weights in last fold:')
-for m in range(M):
-    print('{:>15} {:>15}'.format(attributeNames[m], np.round(w_rlr[m,-1],2)))
-
-print('Ran Exercise 8.1.1')
