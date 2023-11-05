@@ -44,29 +44,21 @@ normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation
 #############
 # apply PCA #
 #############
-
 U, S, Vt = np.linalg.svd(pd.DataFrame(normalized_data), full_matrices=False)
 n_components = 25
 pca_data = np.dot(U[:, :n_components], np.diag(S[:n_components]))
 scaler = StandardScaler()
 pca_data = scaler.fit_transform(pca_data) # mean 0, standard deviation 1
+
 #%%
 #Load data from matlab file
 X = pca_data
 y = np.array(target_to_num)
-N, M = X.shape
-
-# Add offset attribute
-X = np.concatenate((np.ones((X.shape[0],1)),X),1)
-attributeNames = [u'Offset']+attributeNames
-M = M+1
-
 ## Crossvalidation
 # Create crossvalidation partition for evaluation
 K = 10
-CV = model_selection.KFold(K, shuffle=True)
-lambdas = np.power(10.,range(-5,9))
-
+#lambdas = np.power(10.,range(-5,10))
+lambdas = np.logspace(-8, 8, 100)
 opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X, y, lambdas, K)
 
 # Display the results for the last cross-validation fold
@@ -88,5 +80,5 @@ ylabel('Squared error (crossvalidation)')
 legend(['Train error','Validation error'])
 grid()
 
-plt.savefig("my_plot.png", dpi=500)  # 如果要保存图
+plt.savefig("generalization error.png", dpi=500)  # 如果要保存图
 show()
