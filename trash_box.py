@@ -1,3 +1,7 @@
+# exercise 8.1.2
+
+
+
 # 定义λ（alpha）值的范围
 
 alphas = lambda_interval

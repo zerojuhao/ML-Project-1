@@ -1,3 +1,4 @@
+#%%
 from sklearn.preprocessing import StandardScaler, LabelBinarizer 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +11,21 @@ from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import KFold, GridSearchCV, cross_val_score
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn import model_selection
+from toolbox_02450 import rlr_validate
+from matplotlib.pylab import (figure, semilogx, loglog, xlabel, ylabel, legend, 
+                           title, subplot, show, grid)
+import numpy as np
+from scipy.io import loadmat
+import sklearn.linear_model as lm
+from sklearn import model_selection
+from toolbox_02450 import rlr_validate
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 用来正常显示中文标签
+plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号, 注意['SimHei']对应这句不行.
+
+
 data = pd.read_csv('dropout_data.csv', delimiter=';')
 # data.columns = [col.replace('\t', '') for col in data.columns]
 data_no_target = data.drop(columns=['Target']) # delete target column
@@ -35,99 +51,72 @@ normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation
 #############
 # apply PCA #
 #############
+
 U, S, Vt = np.linalg.svd(pd.DataFrame(normalized_data), full_matrices=False)
-n_components = 22
+n_components = 25
 pca_data = np.dot(U[:, :n_components], np.diag(S[:n_components]))
+scaler = StandardScaler()
+pca_data = scaler.fit_transform(pca_data) # mean 0, standard deviation 1
+#%%
+#Load data from matlab file
+X = pca_data
+y = np.array(target_to_num)
+N, M = X.shape
 
-#############
-# apply PCA #
-#############
+
+## Crossvalidation
 # Create crossvalidation partition for evaluation
-# using stratification and 80 pct. split between training and test 
 K = 10
-X = data_matrix
-y = target_to_num
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.8, stratify=y)
+CV = model_selection.KFold(K, shuffle=True)
+lambdas = np.power(10.,range(-5,9))
 
-# Standardize the training and set set based on training set mean and std
-mu = np.mean(X_train, 0)
-sigma = np.std(X_train, 0)
+# Initialize variables
+#T = len(lambdas)
+Error_train = np.empty((K,1))
+Error_test = np.empty((K,1))
+Error_train_rlr = np.empty((K,1))
+Error_test_rlr = np.empty((K,1))
+Error_train_nofeatures = np.empty((K,1))
+Error_test_nofeatures = np.empty((K,1))
+w_rlr = np.empty((M,K))
+opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X, y, lambdas, K)
 
-X_train = (X_train - mu) / sigma
-X_test = (X_test - mu) / sigma
+# Display the results for the last cross-validation fold
 
-# Fit regularized logistic regression model to training data to predict 
-# the type of wine
-lambda_interval = np.logspace(-10, 10, 100)
-train_error_rate = np.zeros(len(lambda_interval))
-test_error_rate = np.zeros(len(lambda_interval))
-coefficient_norm = np.zeros(len(lambda_interval))
-performance_metrics = []
+figure(K, figsize=(12,8))
+subplot(1,2,1)
+semilogx(lambdas,mean_w_vs_lambda.T[:,1:],'.-') # Don't plot the bias term
+xlabel('Regularization factor')
+ylabel('Mean Coefficient Values')
+grid()
+# You can choose to display the legend, but it's omitted for a cleaner 
+# plot, since there are many attributes
+legend(attributeNames[1:], loc='best')
 
-for k in range(0, len(lambda_interval)):
-    mdl = LogisticRegression(penalty='l2', multi_class='multinomial', solver='lbfgs', C=1/lambda_interval[k] , max_iter=1000)
-    
-    mdl.fit(X_train, y_train)
+subplot(1,2,2)
+title('Optimal lambda: 1e{0}'.format(np.log10(opt_lambda)))
+loglog(lambdas,train_err_vs_lambda.T,'b.-',lambdas,test_err_vs_lambda.T,'r.-')
+xlabel('Regularization factor')
+ylabel('Squared error (crossvalidation)')
+legend(['Train error','Validation error'])
+grid()
 
-    y_train_est = mdl.predict(X_train).T
-    y_test_est = mdl.predict(X_test).T
-    
-    train_error_rate[k] = np.sum(y_train_est != y_train) / len(y_train)
-    test_error_rate[k] = np.sum(y_test_est != y_test) / len(y_test)
+plt.savefig("my_plot.png", dpi=500)  # 如果要保存图
+show()
+# Display results
+print('Linear regression without feature selection:')
+print('- Training error: {0}'.format(Error_train.mean()))
+print('- Test error:     {0}'.format(Error_test.mean()))
+print('- R^2 train:     {0}'.format((Error_train_nofeatures.sum()-Error_train.sum())/Error_train_nofeatures.sum()))
+print('- R^2 test:     {0}\n'.format((Error_test_nofeatures.sum()-Error_test.sum())/Error_test_nofeatures.sum()))
+print('Regularized linear regression:')
+print('- Training error: {0}'.format(Error_train_rlr.mean()))
+print('- Test error:     {0}'.format(Error_test_rlr.mean()))
+print('- R^2 train:     {0}'.format((Error_train_nofeatures.sum()-Error_train_rlr.sum())/Error_train_nofeatures.sum()))
+print('- R^2 test:     {0}\n'.format((Error_test_nofeatures.sum()-Error_test_rlr.sum())/Error_test_nofeatures.sum()))
 
-    w_est = mdl.coef_[0] 
-    coefficient_norm[k] = np.sqrt(np.sum(w_est**2))
-    # 在验证集上进行预测
-    y_pred = mdl.predict(X_test)
-    # 计算性能指标，例如均方误差（MSE）
-    mse = np.mean((y_pred - y_test) ** 2)
-    # 存储性能指标
-    performance_metrics.append(mse)
-    
-# 计算泛化误差的平均值
-generalization_error = np.mean(performance_metrics)
-print("Generalization Error: ", generalization_error)
+print('Weights in last fold:')
+for m in range(M):
+    print('{:>15} {:>15}'.format(attributeNames[m], np.round(w_rlr[m,-1],2)))
 
-# 绘制 λ 函数的估计泛化误差图
-plt.figure(figsize=(8, 8))
-plt.semilogx(lambda_interval, performance_metrics, marker='o')
-plt.xlabel('λ')
-plt.ylabel('Mean Squared Error (MSE)')
-plt.title('Estimated Generalization Error vs. λ')
-plt.grid(True)
-plt.show()
-# 找到最小泛化误差对应的λ值
-optimal_alpha = lambda_interval[np.argmin(performance_metrics)]
-print(f"Optimal λ (alpha): {optimal_alpha}")
-
-min_error = np.min(test_error_rate)
-opt_lambda_idx = np.argmin(test_error_rate)
-opt_lambda = lambda_interval[opt_lambda_idx]
-
-plt.figure(figsize=(8,8))
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 用来正常显示中文标签
-plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号, 注意['SimHei']对应这句不行.
-#plt.plot(np.log10(lambda_interval), train_error_rate*100)
-#plt.plot(np.log10(lambda_interval), test_error_rate*100)
-#plt.plot(np.log10(opt_lambda), min_error*100, 'o')
-plt.semilogx(lambda_interval, train_error_rate*100)
-plt.semilogx(lambda_interval, test_error_rate*100)
-plt.semilogx(opt_lambda, min_error*100, 'o')
-plt.text(1e-8, 3, "Minimum test error: " + str(np.round(min_error*100,2)) + ' % at 1e' + str(np.round(np.log10(opt_lambda),2)))
-plt.xlabel('Regularization strength, $\log_{10}(\lambda)$')
-plt.ylabel('Error rate (%)')
-plt.title('Classification error')
-plt.legend(['Training error','Test error','Test minimum'],loc='upper right')
-plt.ylim([0, 100])
-plt.grid()
-plt.show()    
-
-plt.figure(figsize=(8,8))
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 用来正常显示中文标签
-plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号, 注意['SimHei']对应这句不行.
-plt.semilogx(lambda_interval, coefficient_norm,'k')
-plt.ylabel('L2 Norm')
-plt.xlabel('Regularization strength, $\log_{10}(\lambda)$')
-plt.title('Parameter vector L2 norm')
-plt.grid()
-plt.show()
+print('Ran Exercise 8.1.1')
