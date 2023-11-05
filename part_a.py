@@ -4,24 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.linalg import svd
-from sklearn.linear_model import Ridge
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import Ridge, LogisticRegression, LinearRegression
+from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold, GridSearchCV, cross_val_score
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn import model_selection
+from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 from toolbox_02450 import rlr_validate
-from matplotlib.pylab import (figure, semilogx, loglog, xlabel, ylabel, legend, 
-                           title, subplot, show, grid)
-import numpy as np
+from matplotlib.pylab import (figure, semilogx, loglog, xlabel, ylabel, legend, title, subplot, show, grid)
 from scipy.io import loadmat
 import sklearn.linear_model as lm
 from sklearn import model_selection
-from toolbox_02450 import rlr_validate
+
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号, 注意['SimHei']对应这句不行.
 
