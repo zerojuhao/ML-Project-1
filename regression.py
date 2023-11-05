@@ -54,7 +54,7 @@ y = np.array(target_to_num)
 K = 10
 #lambdas = np.power(10.,range(-5,10))
 lambdas = np.logspace(-8, 8, 100)
-opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X, y, lambdas, K)
+opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda ,baseline_mse= rlr_validate(X, y, lambdas, K)
 
 # Display the results for the last cross-validation fold
 figure(K, figsize=(12,8))
@@ -75,11 +75,11 @@ ylabel('Squared error (crossvalidation)')
 legend(['Train error','Validation error'])
 grid()
 
-plt.savefig("generalization error.png", dpi=500)  # 如果要保存图
+plt.savefig("generalization error.png", dpi=50)  # 如果要保存图
 show()
 
 ################
-# regression_a #
+# regression_b #
 ################
 
 #%%
@@ -92,12 +92,12 @@ M = M+1
 
 ## Crossvalidation
 # Create crossvalidation partition for evaluation
-K = 5
+K = 10
 CV = model_selection.KFold(K, shuffle=True)
 #CV = model_selection.KFold(K, shuffle=False)
 
 # Values of lambda
-lambdas = np.power(10.,range(-5,9))
+lambdas = np.logspace(-8, 8, 100)
 
 # Initialize variables
 #T = len(lambdas)
@@ -121,8 +121,12 @@ for train_index, test_index in CV.split(X,y):
     X_test = X[test_index]
     y_test = y[test_index]
     internal_cross_validation = 10
-    
-    opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X_train, y_train, lambdas, internal_cross_validation)
+
+    opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda, baseline_mse = rlr_validate(X_train, y_train, lambdas, internal_cross_validation)
+
+    # baseline error calculation
+    baseline_error=np.empty((K,1))
+    baseline_error = np.append(baseline_error,baseline_mse)
 
     # Standardize outer fold based on training set, and save the mean and standard
     # deviations since they're part of the model (they would be needed for
@@ -151,12 +155,18 @@ for train_index, test_index in CV.split(X,y):
     # Estimate weights for unregularized linear regression, on entire training set
     w_noreg[:,k] = np.linalg.solve(XtX,Xty).squeeze()
     # Compute mean squared error without regularization
-    Error_train[k] = np.square(y_train-X_train @ w_noreg[:,k]).sum(axis=0)/y_train.shape[0]
-    Error_test[k] = np.square(y_test-X_test @ w_noreg[:,k]).sum(axis=0)/y_test.shape[0]
+    #Error_train[k] = np.square(y_train-X_train @ w_noreg[:,k]).sum(axis=0)/y_train.shape[0]
+    #Error_test[k] = np.square(y_test-X_test @ w_noreg[:,k]).sum(axis=0)/y_test.shape[0]
     # OR ALTERNATIVELY: you can use sklearn.linear_model module for linear regression:
-    #m = lm.LinearRegression().fit(X_train, y_train)
-    #Error_train[k] = np.square(y_train-m.predict(X_train)).sum()/y_train.shape[0]
-    #Error_test[k] = np.square(y_test-m.predict(X_test)).sum()/y_test.shape[0]
+    m = lm.LinearRegression().fit(X_train, y_train)
+    Error_train[k] = np.square(y_train-m.predict(X_train)).sum()/y_train.shape[0]
+    Error_test[k] = np.square(y_test-m.predict(X_test)).sum()/y_test.shape[0]
+    print(f'Out fold: {k}','\n' ,'optimal error: {0}'.format(opt_val_err), '\n','optimal λ: {0}'.format(np.log10(opt_lambda)), '\n','Test error without: {0}'.format(Error_test.mean()),'\n','Test error: {0}'.format(Error_test_rlr.mean()), '\n','Baseline error: {0}'.format(np.mean(baseline_error)))
+
+    #print('Linear regression without feature selection:')
+    #print('- Test error:     {0}'.format(Error_test.mean()))
+    #print('Regularized linear regression:')
+    #print('- Test error:     {0}'.format(Error_test_rlr.mean()))
 
     # Display the results for the last cross-validation fold
     if k == K-1:
@@ -187,16 +197,16 @@ for train_index, test_index in CV.split(X,y):
 
 show()
 # Display results
-print('Linear regression without feature selection:')
-print('- Training error: {0}'.format(Error_train.mean()))
-print('- Test error:     {0}'.format(Error_test.mean()))
-print('- R^2 train:     {0}'.format((Error_train_nofeatures.sum()-Error_train.sum())/Error_train_nofeatures.sum()))
-print('- R^2 test:     {0}\n'.format((Error_test_nofeatures.sum()-Error_test.sum())/Error_test_nofeatures.sum()))
-print('Regularized linear regression:')
-print('- Training error: {0}'.format(Error_train_rlr.mean()))
-print('- Test error:     {0}'.format(Error_test_rlr.mean()))
-print('- R^2 train:     {0}'.format((Error_train_nofeatures.sum()-Error_train_rlr.sum())/Error_train_nofeatures.sum()))
-print('- R^2 test:     {0}\n'.format((Error_test_nofeatures.sum()-Error_test_rlr.sum())/Error_test_nofeatures.sum()))
+#print('Linear regression without feature selection:')
+# print('- Training error: {0}'.format(Error_train.mean()))
+#print('- Test error:     {0}'.format(Error_test.mean()))
+# print('- R^2 train:     {0}'.format((Error_train_nofeatures.sum()-Error_train.sum())/Error_train_nofeatures.sum()))
+# print('- R^2 test:     {0}\n'.format((Error_test_nofeatures.sum()-Error_test.sum())/Error_test_nofeatures.sum()))
+#print('Regularized linear regression:')
+# print('- Training error: {0}'.format(Error_train_rlr.mean()))
+#print('- Test error:     {0}'.format(Error_test_rlr.mean()))
+# print('- R^2 train:     {0}'.format((Error_train_nofeatures.sum()-Error_train_rlr.sum())/Error_train_nofeatures.sum()))
+# print('- R^2 test:     {0}\n'.format((Error_test_nofeatures.sum()-Error_test_rlr.sum())/Error_test_nofeatures.sum()))
 
 print('Weights in last fold:')
 for m in range(M):
