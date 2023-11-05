@@ -41,18 +41,10 @@ for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
 
 scaler = StandardScaler()
 normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation 1
-#############
-# apply PCA #
-#############
-U, S, Vt = np.linalg.svd(pd.DataFrame(normalized_data), full_matrices=False)
-n_components = 25
-pca_data = np.dot(U[:, :n_components], np.diag(S[:n_components]))
-scaler = StandardScaler()
-pca_data = scaler.fit_transform(pca_data) # mean 0, standard deviation 1
 
 #%%
 #Load data from matlab file
-X = pca_data
+X = normalized_data
 y = np.array(target_to_num)
 ## Crossvalidation
 # Create crossvalidation partition for evaluation
