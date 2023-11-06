@@ -1,0 +1,45 @@
+
+-------------------------------------------------------------------------------------------------------------------------------
+02450 Introduction to Machine Learning and Data Mining - 2023 Fall [11/05/2023, 16:32:31]
+
+
+Feedback for report no.: 1
+Group: 130
+Student(s): Niels Torp Grønskov (s204510) & Frederik Danielsen (s214718) & Yiming Zhang (s232896)
+Primary marker: Stas Syrota
+
+Please validate the list of student ids on this feedback form to make sure it is correct and matches the group when 
+you submitted report 1 (contact the course coordinator if there are issues with group membership/ids).
+
+Note: The feedback is provided for individual group members; however, it will typically be identical for all members
+unless the markers have found it necessary to differentiate the assessment and feedback.
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
+::::: Feedback for Niels Torp Grønskov (s204510) :::::: 
+Fair report with some inconsistencies and lackings:
+- Your discussion around predicting GPA and the temporal aspects is a bit unclear. Is it because students only get a GPA once they graduate or? I agree that predicting GPA based on GPA makes no sense and care must be taken to avoid using variables that are determining the GPA, but I am not totally sure on what you mean with “including the target variable”. Make sure to make this explicit in the next report.  
+- Your analysis of outliers is well intentioned, but ultimately a bit meaningless. The technique you use relies heavily on the assumption of features to be gaussian. You mention this in your discussion (very good). I would make an argument that most of the features in no way follow a gaussian distribution and so using this method to determine outliers only tells us that your assumptions are wrong. Outliers are out of distribution observations, however, many distributions can have extreme (in distribution) observations. For example: on a GPA scale of 0 to 4, a 4 is an extreme in distribution observation. Whereas 4.1 is not, and therefore an outlier. I would not call the observations you highlighted to be outliers.  
+- When looking at correlation plots make sure to specifically look for correlations between the target variables of your chosen task and the covariates. This is one of the most telling indicators that your task Is feasible. 
+- Some of the histogram plots are quite unreadable. I don’t really understand what “60” or “100” in Nationality attribute is. Although I like the binning wrt. classification target.  
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
+::::: Feedback for Frederik Danielsen (s214718) :::::: 
+Fair report with some inconsistencies and lackings:
+- Your discussion around predicting GPA and the temporal aspects is a bit unclear. Is it because students only get a GPA once they graduate or? I agree that predicting GPA based on GPA makes no sense and care must be taken to avoid using variables that are determining the GPA, but I am not totally sure on what you mean with “including the target variable”. Make sure to make this explicit in the next report.  
+- Your analysis of outliers is well intentioned, but ultimately a bit meaningless. The technique you use relies heavily on the assumption of features to be gaussian. You mention this in your discussion (very good). I would make an argument that most of the features in no way follow a gaussian distribution and so using this method to determine outliers only tells us that your assumptions are wrong. Outliers are out of distribution observations, however, many distributions can have extreme (in distribution) observations. For example: on a GPA scale of 0 to 4, a 4 is an extreme in distribution observation. Whereas 4.1 is not, and therefore an outlier. I would not call the observations you highlighted to be outliers.  
+- When looking at correlation plots make sure to specifically look for correlations between the target variables of your chosen task and the covariates. This is one of the most telling indicators that your task Is feasible. 
+- Some of the histogram plots are quite unreadable. I don’t really understand what “60” or “100” in Nationality attribute is. Although I like the binning wrt. classification target.  
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
+::::: Feedback for Yiming Zhang (s232896) :::::: 
+Fair report with some inconsistencies and lackings:
+- Your discussion around predicting GPA and the temporal aspects is a bit unclear. Is it because students only get a GPA once they graduate or? I agree that predicting GPA based on GPA makes no sense and care must be taken to avoid using variables that are determining the GPA, but I am not totally sure on what you mean with “including the target variable”. Make sure to make this explicit in the next report.  
+- Your analysis of outliers is well intentioned, but ultimately a bit meaningless. The technique you use relies heavily on the assumption of features to be gaussian. You mention this in your discussion (very good). I would make an argument that most of the features in no way follow a gaussian distribution and so using this method to determine outliers only tells us that your assumptions are wrong. Outliers are out of distribution observations, however, many distributions can have extreme (in distribution) observations. For example: on a GPA scale of 0 to 4, a 4 is an extreme in distribution observation. Whereas 4.1 is not, and therefore an outlier. I would not call the observations you highlighted to be outliers.  
+- When looking at correlation plots make sure to specifically look for correlations between the target variables of your chosen task and the covariates. This is one of the most telling indicators that your task Is feasible. 
+- Some of the histogram plots are quite unreadable. I don’t really understand what “60” or “100” in Nationality attribute is. Although I like the binning wrt. classification target.  
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
