@@ -77,6 +77,39 @@ grid()
 
 plt.savefig("generalization error.png", dpi=50)  # 如果要保存图
 show()
+#%%
+#####################
+# regression_a_test # use ridge
+#####################
+# 定义K折交叉验证
+# kf = KFold(n_splits=10)  # 这里使用了10折交叉验证，可以根据需要调整折数
+
+# # 初始化列表来存储每次验证的性能指标
+# alphas = np.logspace(-8, 8, 100)
+# for alpha in alphas:
+# # 执行K折交叉验证
+#     #model = Ridge(alpha=alpha)
+#     #errors = -cross_val_score(model, X, y, cv=10, scoring='neg_mean_squared_error')
+#     #mean_errors.append(np.mean(errors))
+#     for train_index, test_index in kf.split(X):
+#         X_train, X_test = X[train_index], X[test_index]
+#         y_train, y_test = y[train_index], y[test_index]
+        
+#         # 创建你的自定义模型
+#         model = Ridge(alpha=alpha)
+#         # 使用训练集来训练模型
+#         model.fit(X_train, y_train)
+#         # 在验证集上进行预测
+#         y_pred = model.predict(X_test)
+#         # 存储性能指标
+#         scores = cross_val_score(model, X, y, cv=10)
+#         cross_val_scores.append(np.mean(scores))
+
+# # 计算泛化误差的平均值
+# generalization_error = np.mean(performance_metrics)
+
+# print("Generalization Error: ", generalization_error)
+
 
 ################
 # regression_b #
