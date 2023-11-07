@@ -83,34 +83,34 @@ show()
 ################################
 # regression_a_test # use ridge#
 ################################
-lambda_values = np.logspace(-8, 8, 100)
+# lambda_values = np.logspace(-8, 8, 100)
 
-train_errors = []
-validation_errors = []
+# train_errors = []
+# validation_errors = []
 
-for alpha in lambda_values:
-    ridge = Ridge(alpha=alpha)
+# for alpha in lambda_values:
+#     ridge = Ridge(alpha=alpha)
     
-    train_scores = cross_val_score(ridge, X, y, cv=10, scoring='neg_mean_squared_error')
-    train_errors.append(np.mean(-train_scores))
+#     train_scores = cross_val_score(ridge, X, y, cv=10, scoring='neg_mean_squared_error')
+#     train_errors.append(np.mean(-train_scores))
     
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+#     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    ridge.fit(X_train, y_train)
-    val_pred = ridge.predict(X_val)
-    validation_error = np.mean((val_pred - y_val) ** 2)
-    validation_errors.append(validation_error)
+#     ridge.fit(X_train, y_train)
+#     val_pred = ridge.predict(X_val)
+#     validation_error = np.mean((val_pred - y_val) ** 2)
+#     validation_errors.append(validation_error)
 
-plt.figure(figsize=(10, 6))
-plt.plot(lambda_values, train_errors, label='Train Error', marker='o')
-plt.plot(lambda_values, validation_errors, label='Validation Error', marker='o')
-plt.xscale('log')
-plt.xlabel('Lambda (log scale)')
-plt.ylabel('Mean Squared Error')
-plt.title('Ridge Regression - Generalization Error vs. Lambda')
-plt.legend()
-plt.grid()
-plt.show()
+# plt.figure(figsize=(10, 6))
+# plt.plot(lambda_values, train_errors, label='Train Error', marker='o')
+# plt.plot(lambda_values, validation_errors, label='Validation Error', marker='o')
+# plt.xscale('log')
+# plt.xlabel('Lambda (log scale)')
+# plt.ylabel('Mean Squared Error')
+# plt.title('Ridge Regression - Generalization Error vs. Lambda')
+# plt.legend()
+# plt.grid()
+# plt.show()
 
 ################
 # regression_b #
@@ -154,57 +154,68 @@ for train_index, test_index in CV.split(X,y):
     y_test = y[test_index]
     internal_cross_validation = 10
     print('\nCrossvalidation fold: {0}/{1}'.format(k+1,K))    
+    min_errors_ann = []  # 用于存储每次循环的最小错误率
+    best_h_ann = []  # 用于存储每次循环的对应的k值
+    errors_ann = [] 
     
+    # ANN #
     # Extract training and test set for current CV fold, 
     # and convert them to PyTorch tensors
-    X_train_ann = torch.Tensor(X[train_index,:] )
-    y_train_ann = torch.Tensor(y[train_index] )
-    X_test_ann = torch.Tensor(X[test_index,:] )
-    y_test_ann = torch.Tensor(y[test_index] )
-    y_train_ann = y_train_ann.view(-1, 1)
-    y_test_ann = y_test_ann.view(-1, 1)
+    H = np.arange(3,13,1)
 
-    # Define the model structure
-    n_hidden_units = k*2+3 # number of hidden units in the signle hidden layer
-    # The lambda-syntax defines an anonymous function, which is used here to 
-    # make it easy to make new networks within each cross validation fold
-    model = lambda: torch.nn.Sequential(
-                        torch.nn.Linear(37, n_hidden_units), #M features to H hiden units
-                        # 1st transfer function, either Tanh or ReLU:
-                        torch.nn.Tanh(),                            #torch.nn.ReLU(),
-                        torch.nn.Linear(n_hidden_units, 1), # H hidden units to 1 output neuron
-                        torch.nn.Sigmoid() # final tranfer function
-                        )
-    # Since we're training a neural network for binary classification, we use a 
-    # binary cross entropy loss (see the help(train_neural_net) for more on
-    # the loss_fn input to the function)
-    loss_fn = torch.nn.BCELoss()
-    # Train for a maximum of 10000 steps, or until convergence (see help for the 
-    # function train_neural_net() for more on the tolerance/convergence))
-    max_iter = 10000
-    errors_ann = [] 
-    #####print('Training model of type:\n{}\n'.format(str(model())))
-    # Go to the file 'toolbox_02450.py' in the Tools sub-folder of the toolbox
-    # and see how the network is trained (search for 'def train_neural_net',
-    # which is the place the function below is defined)
-    net, final_loss, learning_curve = train_neural_net(model,
-                                                       loss_fn,
-                                                       X=X_train_ann,
-                                                       y=y_train_ann,
-                                                       n_replicates=3,
-                                                       max_iter=max_iter)
-    
-    # print('\n\tBest loss: {}\n'.format(final_loss))
-    
-    # Determine estimated class labels for test set
-    y_sigmoid = net(X_test_ann) # activation of final note, i.e. prediction of network
-    y_test_est_ann = (y_sigmoid > 0.5).type(dtype=torch.uint8) # threshold output of sigmoidal function
-    y_test_ann = y_test_ann.type(dtype=torch.uint8)
-    # Determine errors and error rate
-    # e = (y_test_est_ann != y_test_ann)
-    error_rate_ann = np.square(y_test_ann.numpy() - y_test_est_ann.numpy()).sum(axis=0)/len(y_test_ann)
-    # error_rate_ann = (sum(e).type(torch.float)/len(y_test_ann)).data.numpy()
-    errors_ann.append(error_rate_ann) # store error rate for current CV fold 
+    for h in H:
+        X_train_ann = torch.Tensor(X[train_index,:] )
+        y_train_ann = torch.Tensor(y[train_index] )
+        X_test_ann = torch.Tensor(X[test_index,:] )
+        y_test_ann = torch.Tensor(y[test_index] )
+        y_train_ann = y_train_ann.view(-1, 1)
+        y_test_ann = y_test_ann.view(-1, 1)
+
+        # Define the model structure
+        n_hidden_units = h*2+3 # number of hidden units in the signle hidden layer
+        # The lambda-syntax defines an anonymous function, which is used here to 
+        # make it easy to make new networks within each cross validation fold
+        model = lambda: torch.nn.Sequential(
+                            torch.nn.Linear(37, n_hidden_units), #M features to H hiden units
+                            # 1st transfer function, either Tanh or ReLU:
+                            torch.nn.Sigmoid(),                            #torch.nn.ReLU(),torch.nn.Tanh()
+                            torch.nn.Linear(n_hidden_units, 1), # H hidden units to 1 output neuron
+                            torch.nn.Sigmoid() # final tranfer function
+                            )
+        # Since we're training a neural network for binary classification, we use a 
+        # binary cross entropy loss (see the help(train_neural_net) for more on
+        # the loss_fn input to the function)
+        loss_fn = torch.nn.BCELoss()
+        # Train for a maximum of 10000 steps, or until convergence (see help for the 
+        # function train_neural_net() for more on the tolerance/convergence))
+        max_iter = 10000
+        
+        #####print('Training model of type:\n{}\n'.format(str(model())))
+        # Go to the file 'toolbox_02450.py' in the Tools sub-folder of the toolbox
+        # and see how the network is trained (search for 'def train_neural_net',
+        # which is the place the function below is defined)
+        net, final_loss, learning_curve = train_neural_net(model,
+                                                        loss_fn,
+                                                        X=X_train_ann,
+                                                        y=y_train_ann,
+                                                        n_replicates=3,
+                                                        max_iter=max_iter)
+        
+        # print('\n\tBest loss: {}\n'.format(final_loss))
+        
+        # Determine estimated class labels for test set
+        y_sigmoid = net(X_test_ann) # activation of final note, i.e. prediction of network
+        y_test_est_ann = (y_sigmoid > 0.5).type(dtype=torch.uint8) # threshold output of sigmoidal function
+        y_test_ann = y_test_ann.type(dtype=torch.uint8)
+        # Determine errors and error rate
+        # e = (y_test_est_ann != y_test_ann)
+        error_rate_ann = np.square(y_test_ann.numpy() - y_test_est_ann.numpy()).sum(axis=0)/len(y_test_ann)
+        # error_rate_ann = (sum(e).type(torch.float)/len(y_test_ann)).data.numpy()
+        errors_ann.append(error_rate_ann) # store error rate for current CV fold 
+    min_error_ann = min(errors_ann)
+    min_error_index = errors_ann.index(min_error_ann)
+    best_h_ann = H[min_error_index]
+        
 
     opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda, baseline_mse = rlr_validate(X_train, y_train, lambdas, internal_cross_validation)
 
@@ -250,8 +261,8 @@ for train_index, test_index in CV.split(X,y):
         'Test error without: {0}'.format(Error_test.mean()),'\n',
         'Test error: {0}'.format(Error_test_rlr.mean()), '\n',
         'Baseline error: {0}'.format(np.mean(baseline_error)), '\n',
-        'ANN error: {0}'.format(np.mean(errors_ann)), '\n',
-        'Hidden units: {0}'.format(np.mean(n_hidden_units)), '\n',
+        'ANN error: {0}'.format(np.mean(min_error_ann)), '\n',
+        'Hidden units: {0}'.format(np.mean(best_h_ann)), '\n',
         )
 
     #print('Linear regression without feature selection:')
