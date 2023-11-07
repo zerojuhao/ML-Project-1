@@ -17,8 +17,8 @@ from sklearn import model_selection
 import torch
 from toolbox_02450 import train_neural_net, draw_neural_net, visualize_decision_boundary
 
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 用来正常显示中文标签
-plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号, 注意['SimHei']对应这句不行.
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  
+plt.rcParams['axes.unicode_minus'] = False  # display “ - ”
 
 
 data = pd.read_csv('dropout_data.csv', delimiter=';')
