@@ -44,12 +44,8 @@ for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
 scaler = StandardScaler()
 normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation 1
 X = normalized_data # if use pca_data, remember change some parameters in ANN #
-y = np.array(target_to_num)
-# 计算类别的数量
-num_classes = np.max(y) + 1
-one_hot = np.zeros((len(y), num_classes))
-one_hot[np.arange(len(y)), y] = 1
-print(one_hot)
+# y = np.array(target_to_num)
+y = one_hot_encoded
 ################
 # regression_a #
 ################
@@ -349,14 +345,14 @@ sigma = np.empty((K, M-1))
 w_noreg = np.empty((M,K))
 k=0
 for train_index, test_index in CV.split(X,y):
-    
+    print('\nCrossvalidation fold: {0}/{1}'.format(k+1,K))
     # extract training and test set for current CV fold
     X_train = X[train_index]
     y_train = y[train_index]
     X_test = X[test_index]
     y_test = y[test_index]
     internal_cross_validation = 10
-    print('\nCrossvalidation fold: {0}/{1}'.format(k+1,K))    
+        
 
     # ANN #
     # Extract training and test set for current CV fold, 
@@ -390,7 +386,8 @@ for train_index, test_index in CV.split(X,y):
     m = lm.LinearRegression().fit(X_train, y_train)
     Error_train[k] = np.square(y_train-m.predict(X_train)).sum()/y_train.shape[0]
     Error_test[k] = np.square(y_test-m.predict(X_test)).sum()/y_test.shape[0]
-    print(f'Out fold: {k}','\n' ,'optimal error: {0}'.format(opt_val_err), '\n',
+
+    print('optimal error: {0}'.format(opt_val_err), '\n',
         'optimal λ: {0}'.format(np.log10(opt_lambda)), '\n',
         #'Test error without: {0}'.format(Error_test.mean()),'\n',
         #'Test error: {0}'.format(Error_test_rlr.mean()), '\n',
