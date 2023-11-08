@@ -45,7 +45,11 @@ scaler = StandardScaler()
 normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation 1
 X = normalized_data # if use pca_data, remember change some parameters in ANN #
 y = np.array(target_to_num)
-
+# 计算类别的数量
+num_classes = np.max(y) + 1
+one_hot = np.zeros((len(y), num_classes))
+one_hot[np.arange(len(y)), y] = 1
+print(one_hot)
 ################
 # regression_a #
 ################
