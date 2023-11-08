@@ -16,6 +16,8 @@ import sklearn.linear_model as lm
 from sklearn import model_selection
 import torch
 from toolbox_02450 import train_neural_net, draw_neural_net, visualize_decision_boundary, rlr_validate_mse
+from scipy import stats
+
 
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  
 plt.rcParams['axes.unicode_minus'] = False  # display “ - ”
@@ -313,9 +315,9 @@ for m in range(M):
 
 print('Ran Exercise 8.1.1')
 
-####################
-# regression_b_test#
-####################
+#############################
+# regression_b_finished_here#
+#############################
 
 #%%
 N, M = X.shape
@@ -340,6 +342,9 @@ w_rlr = np.empty((M,K))
 mu = np.empty((K, M-1))
 sigma = np.empty((K, M-1))
 w_noreg = np.empty((M,K))
+model_ann_performance = []
+model_linear_regression_performance = []
+model_baseline_performance = []
 k=0
 for train_index, test_index in CV.split(X,y):
     print('\nCrossvalidation fold: {0}/{1}'.format(k+1,K))
@@ -384,13 +389,59 @@ for train_index, test_index in CV.split(X,y):
     Error_train[k] = np.square(y_train-m.predict(X_train)).sum()/y_train.shape[0]
     Error_test[k] = np.square(y_test-m.predict(X_test)).sum()/y_test.shape[0]
 
-    print('optimal error: {0}'.format(opt_val_err), '\n',
-        'optimal λ: {0}'.format(np.log10(opt_lambda)), '\n',
-        #'Test error without: {0}'.format(Error_test.mean()),'\n',
-        #'Test error: {0}'.format(Error_test_rlr.mean()), '\n',
-        'Baseline error: {0}'.format(np.mean(baseline_mse)), '\n',
+    print('Optimal Hidden units: {0}'.format(np.mean(best_units_num)), '\n',
         'ANN error: {0}'.format(np.mean(min_error_ann)), '\n',
-        'Hidden units: {0}'.format(np.mean(best_units_num)), '\n',
+        'Optimal λ: {0}'.format(np.log10(opt_lambda)), '\n',
+        'Linear Regression error: {0}'.format(opt_val_err), '\n',
+        'Baseline error: {0}'.format(np.mean(baseline_mse)), '\n',
+        #'Test error without: {0}'.format(Error_test.mean()),'\n',
+        #'Test error: {0}'.format(Error_test_rlr.mean()), '\n',        
         )
-
+    model_ann_performance.append(min_error_ann)
+    model_linear_regression_performance.append(opt_val_err)
+    model_baseline_performance.append(baseline_mse)
     k+=1
+
+ann_performance = np.array(model_ann_performance)
+linear_regression_performance = np.array(model_linear_regression_performance)
+baseline_performance = np.array(model_baseline_performance)
+#%%
+# 3. 统计检验和置信区间：
+# 比较神经网络和线性回归模型
+t_stat_ann_vs_lr, p_value_ann_vs_lr = stats.ttest_ind(ann_performance, linear_regression_performance)
+
+# 比较神经网络和基线模型
+t_stat_ann_vs_baseline, p_value_ann_vs_baseline = stats.ttest_ind(ann_performance, baseline_performance)
+
+# 比较线性回归模型和基线模型
+t_stat_lr_vs_baseline, p_value_lr_vs_baseline = stats.ttest_ind(linear_regression_performance, baseline_performance)
+# 计算神经网络和线性回归模型之间性能差异的置信区间
+mean_diff_ann_vs_lr = np.mean(ann_performance) - np.mean(linear_regression_performance)
+std_diff_ann_vs_lr = np.std(ann_performance - linear_regression_performance)
+ci_low_ann_vs_lr = mean_diff_ann_vs_lr - 1.96 * std_diff_ann_vs_lr
+ci_high_ann_vs_lr = mean_diff_ann_vs_lr + 1.96 * std_diff_ann_vs_lr
+
+mean_diff_ann_vs_baseline = np.mean(ann_performance) - np.mean(baseline_performance)
+std_diff_ann_vs_baseline = np.std(ann_performance - baseline_performance)
+ci_low_ann_vs_baseline = mean_diff_ann_vs_baseline - 1.96 * std_diff_ann_vs_baseline
+ci_high_ann_vs_baseline = mean_diff_ann_vs_baseline + 1.96 * std_diff_ann_vs_baseline
+
+mean_diff_lr_vs_baseline = np.mean(linear_regression_performance) - np.mean(baseline_performance)
+std_diff_lr_vs_baseline = np.std(linear_regression_performance - baseline_performance)
+ci_low_lr_vs_baseline = mean_diff_lr_vs_baseline - 1.96 * std_diff_lr_vs_baseline
+ci_high_lr_vs_baseline = mean_diff_lr_vs_baseline + 1.96 * std_diff_lr_vs_baseline
+models = ['ANN vs LR', 'ANN vs Baseline', 'LR vs Baseline']
+performance_diff = [mean_diff_ann_vs_lr, mean_diff_ann_vs_baseline, mean_diff_lr_vs_baseline]
+conf_intervals = [(ci_low_ann_vs_lr, ci_high_ann_vs_lr),
+                  (ci_low_ann_vs_baseline, ci_high_ann_vs_baseline),
+                  (ci_low_lr_vs_baseline, ci_high_lr_vs_baseline)]
+conf_intervals=np.array(conf_intervals)
+conf_intervals = np.abs(conf_intervals)
+plt.bar(models, performance_diff, yerr=np.array(conf_intervals).T, capsize=10)
+plt.ylabel('Performance Difference')
+plt.title('Model Performance Comparison')
+plt.show()
+
+print(f"t-statistic ANN vs LR: {t_stat_ann_vs_lr}, p-value: {p_value_ann_vs_lr}")
+print(f"t-statistic ANN vs Baseline: {t_stat_ann_vs_baseline}, p-value: {p_value_ann_vs_baseline}")
+print(f"t-statistic LR vs Baseline: {t_stat_lr_vs_baseline}, p-value: {p_value_lr_vs_baseline}")
