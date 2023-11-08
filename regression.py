@@ -15,7 +15,7 @@ from scipy.io import loadmat
 import sklearn.linear_model as lm
 from sklearn import model_selection
 import torch
-from toolbox_02450 import train_neural_net, draw_neural_net, visualize_decision_boundary
+from toolbox_02450 import train_neural_net, draw_neural_net, visualize_decision_boundary, rlr_validate_mse
 
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  
 plt.rcParams['axes.unicode_minus'] = False  # display “ - ”
@@ -43,7 +43,7 @@ for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
 
 scaler = StandardScaler()
 normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation 1
-X = normalized_data
+X = normalized_data # if use pca_data, remember change some parameters in ANN #
 y = np.array(target_to_num)
 
 ################
@@ -56,7 +56,7 @@ y = np.array(target_to_num)
 K = 10
 #lambdas = np.power(10.,range(-5,10))
 lambdas = np.logspace(-8, 8, 100)
-opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda ,baseline_mse= rlr_validate(X, y, lambdas, K)
+opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X, y, lambdas, K)
 
 # Display the results for the last cross-validation fold
 figure(K, figsize=(12,8))
@@ -77,7 +77,7 @@ ylabel('Squared error (crossvalidation)')
 legend(['Train error','Validation error'])
 grid()
 
-plt.savefig("generalization error.png", dpi=50)  # save image
+plt.savefig("generalization error.png", dpi=50)  # save image, and set dpi
 show()
 #%%
 ################################
@@ -217,11 +217,11 @@ for train_index, test_index in CV.split(X,y):
     best_h_ann = H[min_error_index]
         
 
-    opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda, baseline_mse = rlr_validate(X_train, y_train, lambdas, internal_cross_validation)
+    opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X_train, y_train, lambdas, internal_cross_validation)
 
     # baseline error calculation
-    baseline_error=np.empty((K,1))
-    baseline_error = np.append(baseline_error,baseline_mse)
+    # baseline_error=np.empty((10,1))
+    # baseline_error = np.append(baseline_error,baseline_mse)
 
     # Standardize outer fold based on training set, and save the mean and standard
     # deviations since they're part of the model (they would be needed for
@@ -260,7 +260,7 @@ for train_index, test_index in CV.split(X,y):
         'optimal λ: {0}'.format(np.log10(opt_lambda)), '\n',
         'Test error without: {0}'.format(Error_test.mean()),'\n',
         'Test error: {0}'.format(Error_test_rlr.mean()), '\n',
-        'Baseline error: {0}'.format(np.mean(baseline_error)), '\n',
+        'Baseline error: {0}'.format(np.mean(baseline_mse)), '\n',
         'ANN error: {0}'.format(np.mean(min_error_ann)), '\n',
         'Hidden units: {0}'.format(np.mean(best_h_ann)), '\n',
         )
@@ -315,3 +315,86 @@ for m in range(M):
     print('{:>15} {:>15}'.format(attributeNames[m], np.round(w_rlr[m,-1],2)))
 
 print('Ran Exercise 8.1.1')
+
+####################
+# regression_b_test#
+####################
+
+#%%
+N, M = X.shape
+# Add offset attribute
+X = np.concatenate((np.ones((X.shape[0],1)),X),1)
+attributeNames = [u'Offset']+attributeNames
+M = 37
+
+K = 10
+CV = model_selection.KFold(K, shuffle=True)
+
+
+
+#T = len(lambdas)
+Error_train = np.empty((K,1))
+Error_test = np.empty((K,1))
+Error_train_rlr = np.empty((K,1))
+Error_test_rlr = np.empty((K,1))
+Error_train_nofeatures = np.empty((K,1))
+Error_test_nofeatures = np.empty((K,1))
+w_rlr = np.empty((M,K))
+mu = np.empty((K, M-1))
+sigma = np.empty((K, M-1))
+w_noreg = np.empty((M,K))
+k=0
+for train_index, test_index in CV.split(X,y):
+    
+    # extract training and test set for current CV fold
+    X_train = X[train_index]
+    y_train = y[train_index]
+    X_test = X[test_index]
+    y_test = y[test_index]
+    internal_cross_validation = 10
+    print('\nCrossvalidation fold: {0}/{1}'.format(k+1,K))    
+
+    # ANN #
+    # Extract training and test set for current CV fold, 
+    # and convert them to PyTorch tensors
+    # Values of lambda
+    lambdas = np.logspace(-8, 8, 100)
+
+    # receive output
+    opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda, baseline_mse, best_units_num, min_error_ann = rlr_validate_mse(X_train, y_train, lambdas, internal_cross_validation)
+
+    # Standardize outer fold based on training set, and save the mean and standard
+    # deviations since they're part of the model (they would be needed for
+    # making new predictions) - for brevity we won't always store these in the scripts
+    mu[k, :] = np.mean(X_train[:, 1:], 0)
+    sigma[k, :] = np.std(X_train[:, 1:], 0)
+    
+    X_train[:, 1:] = (X_train[:, 1:] - mu[k, :] ) / sigma[k, :] 
+    X_test[:, 1:] = (X_test[:, 1:] - mu[k, :] ) / sigma[k, :] 
+    
+    Xty = X_train.T @ y_train
+    XtX = X_train.T @ X_train
+    
+    # Estimate weights for the optimal value of lambda, on entire training set
+    lambdaI = opt_lambda * np.eye(M)
+    lambdaI[0,0] = 0 # Do no regularize the bias term
+    w_rlr[:,k] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
+    # Compute mean squared error with regularization with optimal lambda
+    Error_train_rlr[k] = np.square(y_train-X_train @ w_rlr[:,k]).sum(axis=0)/y_train.shape[0]
+    Error_test_rlr[k] = np.square(y_test-X_test @ w_rlr[:,k]).sum(axis=0)/y_test.shape[0]
+    # Compute mean squared error without regularization
+    m = lm.LinearRegression().fit(X_train, y_train)
+    Error_train[k] = np.square(y_train-m.predict(X_train)).sum()/y_train.shape[0]
+    Error_test[k] = np.square(y_test-m.predict(X_test)).sum()/y_test.shape[0]
+    print(f'Out fold: {k}','\n' ,'optimal error: {0}'.format(opt_val_err), '\n',
+        'optimal λ: {0}'.format(np.log10(opt_lambda)), '\n',
+        #'Test error without: {0}'.format(Error_test.mean()),'\n',
+        #'Test error: {0}'.format(Error_test_rlr.mean()), '\n',
+        'Baseline error: {0}'.format(np.mean(baseline_mse)), '\n',
+        'ANN error: {0}'.format(np.mean(min_error_ann)), '\n',
+        'Hidden units: {0}'.format(np.mean(best_units_num)), '\n',
+        )
+
+    k+=1
+
+show()
