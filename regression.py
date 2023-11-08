@@ -44,8 +44,8 @@ for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
 scaler = StandardScaler()
 normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation 1
 X = normalized_data # if use pca_data, remember change some parameters in ANN #
-# y = np.array(target_to_num)
-y = one_hot_encoded
+y = np.array(target_to_num)
+
 ################
 # regression_a #
 ################
@@ -260,9 +260,6 @@ for train_index, test_index in CV.split(X,y):
         'optimal λ: {0}'.format(np.log10(opt_lambda)), '\n',
         'Test error without: {0}'.format(Error_test.mean()),'\n',
         'Test error: {0}'.format(Error_test_rlr.mean()), '\n',
-        'Baseline error: {0}'.format(np.mean(baseline_mse)), '\n',
-        'ANN error: {0}'.format(np.mean(min_error_ann)), '\n',
-        'Hidden units: {0}'.format(np.mean(best_h_ann)), '\n',
         )
 
     #print('Linear regression without feature selection:')
@@ -397,5 +394,3 @@ for train_index, test_index in CV.split(X,y):
         )
 
     k+=1
-
-show()
