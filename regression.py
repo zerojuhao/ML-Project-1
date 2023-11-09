@@ -17,6 +17,7 @@ from sklearn import model_selection
 import torch
 from toolbox_02450 import train_neural_net, draw_neural_net, visualize_decision_boundary, rlr_validate_mse, rlr_validate_nmo
 from scipy import stats
+import statsmodels.stats.contingency_tables as tbl
 
 
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  
@@ -329,73 +330,70 @@ baseline_performance = np.array(model_baseline_performance)
 #############################
 #%%
 # get t and p value
-t_stat_ann_vs_lr, p_value_ann_vs_lr = stats.ttest_ind(ann_performance, linear_regression_performance)
-t_stat_ann_vs_baseline, p_value_ann_vs_baseline = stats.ttest_ind(ann_performance, baseline_performance)
-t_stat_lr_vs_baseline, p_value_lr_vs_baseline = stats.ttest_ind(linear_regression_performance, baseline_performance)
 
-if p_value_ann_vs_lr < 0.05:
-    print("Significant differences in performance between ANN and Linear Regression")
-else:
-    print("No significant difference in performance between ANN and Linear Regression")
-print(f"t-statistic ANN vs LR: {t_stat_ann_vs_lr}, p-value: {p_value_ann_vs_lr}")
+# if p_value_ann_vs_lr < 0.05:
+#     print("Significant differences in performance between ANN and Linear Regression")
+# else:
+#     print("No significant difference in performance between ANN and Linear Regression")
+# print(f"t-statistic ANN vs LR: {t_stat_ann_vs_lr}, p-value: {p_value_ann_vs_lr}")
 
-if p_value_ann_vs_baseline < 0.05:
-    print("Significant differences in performance between ANN and Baseline")
-else:
-    print("No significant difference in performance between ANN and Baseline")
-print(f"t-statistic ANN vs Baseline: {t_stat_ann_vs_baseline}, p-value: {p_value_ann_vs_baseline}")
+# if p_value_ann_vs_baseline < 0.05:
+#     print("Significant differences in performance between ANN and Baseline")
+# else:
+#     print("No significant difference in performance between ANN and Baseline")
+# print(f"t-statistic ANN vs Baseline: {t_stat_ann_vs_baseline}, p-value: {p_value_ann_vs_baseline}")
 
-if p_value_lr_vs_baseline < 0.05:
-    print("Significant differences in performance between Linear Regression and Baseline")
-else:
-    print("No significant difference in performance between Linear Regression and Baseline")
-print(f"t-statistic LR vs Baseline: {t_stat_lr_vs_baseline}, p-value: {p_value_lr_vs_baseline}")
+# if p_value_lr_vs_baseline < 0.05:
+#     print("Significant differences in performance between Linear Regression and Baseline")
+# else:
+#     print("No significant difference in performance between Linear Regression and Baseline")
+# print(f"t-statistic LR vs Baseline: {t_stat_lr_vs_baseline}, p-value: {p_value_lr_vs_baseline}")
 
-models = ['ANN', 'Linear Regression', 'Baseline']
-p_values = [p_value_ann_vs_lr, p_value_ann_vs_baseline, p_value_lr_vs_baseline]
-plt.bar(models, p_values, color=['blue', 'orange', 'red'])
-plt.xlabel('Models')
-plt.ylabel('p-value')
-plt.title('p-value for Model Comparisons')
-plt.show()
+# models = ['ANN', 'Linear Regression', 'Baseline']
+# p_values = [p_value_ann_vs_lr, p_value_ann_vs_baseline, p_value_lr_vs_baseline]
+# plt.bar(models, p_values, color=['blue', 'orange', 'red'])
+# plt.xlabel('Models')
+# plt.ylabel('p-value')
+# plt.title('p-value for Model Comparisons')
+# plt.show()
 
-# calculate confidence interval
-def confidence_interval(data, alpha=0.05):
-    mean = np.mean(data)
-    std_dev = np.std(data, ddof=1)
-    n = len(data)
-    z = stats.t.ppf(1 - alpha / 2, n - 1)
-    margin_of_error = z * (std_dev / np.sqrt(n))
-    lower_bound = mean - margin_of_error
-    upper_bound = mean + margin_of_error
-    return (lower_bound, upper_bound)
+# # calculate confidence interval
+# def confidence_interval(data, alpha=0.05):
+#     mean = np.mean(data)
+#     std_dev = np.std(data, ddof=1)
+#     n = len(data)
+#     z = stats.t.ppf(1 - alpha / 2, n - 1)
+#     margin_of_error = z * (std_dev / np.sqrt(n))
+#     lower_bound = mean - margin_of_error
+#     upper_bound = mean + margin_of_error
+#     return (lower_bound, upper_bound)
 
-ann_ci = confidence_interval(ann_performance)
-linear_regression_ci = confidence_interval(linear_regression_performance)
-baseline_ci = confidence_interval(baseline_performance)
+# ann_ci = confidence_interval(ann_performance)
+# linear_regression_ci = confidence_interval(linear_regression_performance)
+# baseline_ci = confidence_interval(baseline_performance)
 
-print("ANN Confidence Interval:\n", ann_ci)
-print("Linear Regression Confidence Interval:\n", linear_regression_ci)
-print("Baseline Confidence Interval:\n", baseline_ci)
+# print("ANN Confidence Interval:\n", ann_ci)
+# print("Linear Regression Confidence Interval:\n", linear_regression_ci)
+# print("Baseline Confidence Interval:\n", baseline_ci)
 
-models = ['ANN', 'Linear Regression', 'Baseline']
-mean_performance = [np.mean(ann_performance), np.mean(linear_regression_performance), np.mean(baseline_performance)]
-conf_intervals = [ann_ci, linear_regression_ci, baseline_ci]
-performance_data = [ann_performance, linear_regression_performance, baseline_performance]
-x_pos = np.arange(len(models))
-bar_width = 0.3
+# models = ['ANN', 'Linear Regression', 'Baseline']
+# mean_performance = [np.mean(ann_performance), np.mean(linear_regression_performance), np.mean(baseline_performance)]
+# conf_intervals = [ann_ci, linear_regression_ci, baseline_ci]
+# performance_data = [ann_performance, linear_regression_performance, baseline_performance]
+# x_pos = np.arange(len(models))
+# bar_width = 0.3
 
-plt.figure(figsize=(10, 6))
+# plt.figure(figsize=(10, 6))
 
-for i, model in enumerate(models):
-    lower_bound, upper_bound = conf_intervals[i]
-    y = mean_performance[i]
-    plt.bar(x_pos[i], y, bar_width)
-    plt.errorbar(x_pos[i], y, yerr=[[y - lower_bound], [upper_bound - y]], fmt='o',color = 'black', capsize=5)
+# for i, model in enumerate(models):
+#     lower_bound, upper_bound = conf_intervals[i]
+#     y = mean_performance[i]
+#     plt.bar(x_pos[i], y, bar_width)
+#     plt.errorbar(x_pos[i], y, yerr=[[y - lower_bound], [upper_bound - y]], fmt='o',color = 'black', capsize=5)
 
-plt.xticks(x_pos, models)
-plt.xlabel('Models')
-plt.ylabel('Performance')
-plt.title('Confidence Intervals for Different Models')
-plt.legend()
-plt.show()
+# plt.xticks(x_pos, models)
+# plt.xlabel('Models')
+# plt.ylabel('Performance')
+# plt.title('Confidence Intervals for Different Models')
+# plt.legend()
+# plt.show()
