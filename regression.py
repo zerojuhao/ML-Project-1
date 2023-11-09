@@ -394,8 +394,8 @@ for train_index, test_index in CV.split(X,y):
         'Optimal λ: {0}'.format(np.log10(opt_lambda)), '\n',
         'Linear Regression error: {0}'.format(opt_val_err), '\n',
         'Baseline error: {0}'.format(np.mean(baseline_mse)), '\n',
-        #'Test error without: {0}'.format(Error_test.mean()),'\n',
-        #'Test error: {0}'.format(Error_test_rlr.mean()), '\n',        
+        'Test error without: {0}'.format(Error_test.mean()),'\n',
+        'Test error: {0}'.format(Error_test_rlr.mean()), '\n',        
         )
     model_ann_performance.append(min_error_ann)
     model_linear_regression_performance.append(opt_val_err)
@@ -406,42 +406,68 @@ ann_performance = np.array(model_ann_performance)
 linear_regression_performance = np.array(model_linear_regression_performance)
 baseline_performance = np.array(model_baseline_performance)
 #%%
-# 3. 统计检验和置信区间：
-# 比较神经网络和线性回归模型
+
 t_stat_ann_vs_lr, p_value_ann_vs_lr = stats.ttest_ind(ann_performance, linear_regression_performance)
-
-# 比较神经网络和基线模型
 t_stat_ann_vs_baseline, p_value_ann_vs_baseline = stats.ttest_ind(ann_performance, baseline_performance)
-
-# 比较线性回归模型和基线模型
 t_stat_lr_vs_baseline, p_value_lr_vs_baseline = stats.ttest_ind(linear_regression_performance, baseline_performance)
-# 计算神经网络和线性回归模型之间性能差异的置信区间
-mean_diff_ann_vs_lr = np.mean(ann_performance) - np.mean(linear_regression_performance)
-std_diff_ann_vs_lr = np.std(ann_performance - linear_regression_performance)
-ci_low_ann_vs_lr = mean_diff_ann_vs_lr - 1.96 * std_diff_ann_vs_lr
-ci_high_ann_vs_lr = mean_diff_ann_vs_lr + 1.96 * std_diff_ann_vs_lr
 
-mean_diff_ann_vs_baseline = np.mean(ann_performance) - np.mean(baseline_performance)
-std_diff_ann_vs_baseline = np.std(ann_performance - baseline_performance)
-ci_low_ann_vs_baseline = mean_diff_ann_vs_baseline - 1.96 * std_diff_ann_vs_baseline
-ci_high_ann_vs_baseline = mean_diff_ann_vs_baseline + 1.96 * std_diff_ann_vs_baseline
+if p_value_ann_vs_lr < 0.05:  # 选择显著性水平（通常为0.05）
+    print("Significant differences in performance between ANN and Linear Regression")
+else:
+    print("No significant difference in performance between ANN and Linear Regression")
 
-mean_diff_lr_vs_baseline = np.mean(linear_regression_performance) - np.mean(baseline_performance)
-std_diff_lr_vs_baseline = np.std(linear_regression_performance - baseline_performance)
-ci_low_lr_vs_baseline = mean_diff_lr_vs_baseline - 1.96 * std_diff_lr_vs_baseline
-ci_high_lr_vs_baseline = mean_diff_lr_vs_baseline + 1.96 * std_diff_lr_vs_baseline
-models = ['ANN vs LR', 'ANN vs Baseline', 'LR vs Baseline']
-performance_diff = [mean_diff_ann_vs_lr, mean_diff_ann_vs_baseline, mean_diff_lr_vs_baseline]
-conf_intervals = [(ci_low_ann_vs_lr, ci_high_ann_vs_lr),
-                  (ci_low_ann_vs_baseline, ci_high_ann_vs_baseline),
-                  (ci_low_lr_vs_baseline, ci_high_lr_vs_baseline)]
-conf_intervals=np.array(conf_intervals)
-conf_intervals = np.abs(conf_intervals)
-plt.bar(models, performance_diff, yerr=np.array(conf_intervals).T, capsize=10)
-plt.ylabel('Performance Difference')
-plt.title('Model Performance Comparison')
-plt.show()
+if p_value_ann_vs_baseline < 0.05:  # 选择显著性水平（通常为0.05）
+    print("Significant differences in performance between ANN and Baseline")
+else:
+    print("No significant difference in performance between ANN and Baseline")
+
+if p_value_lr_vs_baseline < 0.05:  # 选择显著性水平（通常为0.05）
+    print("Significant differences in performance between Linear Regression and Baseline")
+else:
+    print("No significant difference in performance between Linear Regression and Baseline")
 
 print(f"t-statistic ANN vs LR: {t_stat_ann_vs_lr}, p-value: {p_value_ann_vs_lr}")
 print(f"t-statistic ANN vs Baseline: {t_stat_ann_vs_baseline}, p-value: {p_value_ann_vs_baseline}")
 print(f"t-statistic LR vs Baseline: {t_stat_lr_vs_baseline}, p-value: {p_value_lr_vs_baseline}")
+models = ['ANN', 'Linear Regression', 'Baseline']
+p_values = [p_value_ann_vs_lr, p_value_ann_vs_baseline, p_value_lr_vs_baseline]
+plt.bar(models, p_values, color=['blue', 'green', 'red'])
+plt.xlabel('Models')
+plt.ylabel('p-value')
+plt.title('p-value for Model Comparisons')
+plt.show()
+
+# 函数来计算置信区间
+def confidence_interval(data, alpha=0.05):
+    mean = np.mean(data)
+    std_dev = np.std(data, ddof=1)
+    n = len(data)
+    z = stats.t.ppf(1 - alpha / 2, n - 1)
+    margin_of_error = z * (std_dev / np.sqrt(n))
+    lower_bound = mean - margin_of_error
+    upper_bound = mean + margin_of_error
+    return (lower_bound, upper_bound)
+
+ann_ci = confidence_interval(ann_performance)
+linear_regression_ci = confidence_interval(linear_regression_performance)
+baseline_ci = confidence_interval(baseline_performance)
+
+print("ANN Confidence Interval:", ann_ci)
+print("Linear Regression Confidence Interval:", linear_regression_ci)
+print("Baseline Confidence Interval:", baseline_ci)
+
+
+models = ['ANN', 'Linear Regression', 'Baseline']
+mean_performance = [np.mean(ann_performance), np.mean(linear_regression_performance), np.mean(baseline_performance)]
+conf_intervals = [ann_ci, linear_regression_ci, baseline_ci]
+performance_data = [ann_performance, linear_regression_performance, baseline_performance]
+
+cis = [confidence_interval(data) for data in performance_data]
+
+lower_bounds = [ci[0] for ci in cis]
+upper_bounds = [ci[1] for ci in cis]
+
+plt.bar(models, [np.mean(data) for data in performance_data], yerr=[(upper - lower) / 2 for upper, lower in zip(upper_bounds, lower_bounds)], capsize=5)
+plt.ylabel("Mean Performance")
+plt.title("Model Performance with Confidence Intervals")
+plt.show()
