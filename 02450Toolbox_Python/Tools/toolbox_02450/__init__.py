@@ -7,6 +7,7 @@ __version__ = 'Revision: 2020-02-15'
 import sklearn.metrics.cluster as cluster_metrics
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 from sklearn import model_selection, linear_model
 from matplotlib.pyplot import contourf
 from matplotlib import cm
@@ -15,6 +16,11 @@ from toolbox_02450.similarity import *
 from toolbox_02450.categoric2numeric import categoric2numeric
 from toolbox_02450.bin_classifier_ensemble import BinClassifierEnsemble
 from sklearn.metrics import mean_squared_error
+from sklearn import metrics
+import torch.nn as nn
+from collections import Counter
+import sklearn.linear_model as lm
+from sklearn.linear_model import LogisticRegression
 
 def remove_zero_cols(m):
     '''Function removes from given matrix m the column vectors containing only zeros.'''
@@ -165,16 +171,6 @@ def rlr_validate(X,y,lambdas,cvf=10):
         X_test = X[test_index]
         y_test = y[test_index]
         
-        # 计算训练数据上的目标平均值
-        y_mean_train = np.mean(y_train)
-        # 在验证集上预测目标
-        # 使用训练数据上的平均值进行测试数据的目标预测
-        y_pred = np.full(len(y_test), y_mean_train)
-        # 计算均方误差（MSE）作为测试误差
-        baseline_mse = mean_squared_error(y_test, y_pred)
-
-        
-        
         # Standardize the training and set set based on training set moments
         mu = np.mean(X_train[:, 1:], 0)
         sigma = np.std(X_train[:, 1:], 0)
@@ -203,8 +199,236 @@ def rlr_validate(X,y,lambdas,cvf=10):
     test_err_vs_lambda = np.mean(test_error,axis=0)
     mean_w_vs_lambda = np.squeeze(np.mean(w,axis=1))
     
-    return opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda, baseline_mse
+    return opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda
+ 
+def rlr_validate_mse(X,y,lambdas,cvf=10):
+     
+    '''
+    different calculation method of error : mse, mean square error
+    '''
+    CV = model_selection.KFold(cvf, shuffle=True)
+    M = X.shape[1]
+    w = np.empty((M,cvf,len(lambdas)))
+    train_error = np.empty((cvf,len(lambdas)))
+    test_error = np.empty((cvf,len(lambdas)))
+    min_error_ann_s = []
+    best_units_num_s = []
+    baseline_mse_s = []
+    f = 0
+    y = y.squeeze()
+    
+    for train_index, test_index in CV.split(X,y):
+        print('\n Inner Crossvalidation Fold: {0}/{1}'.format(f+1,cvf))
+        X_train = X[train_index]
+        y_train = y[train_index]
+        X_test = X[test_index]
+        y_test = y[test_index]
         
+        # Standardize the training and set set based on training set moments
+        mu = np.mean(X_train[:, 1:], 0)
+        sigma = np.std(X_train[:, 1:], 0)
+        
+        X_train[:, 1:] = (X_train[:, 1:] - mu) / sigma
+        X_test[:, 1:] = (X_test[:, 1:] - mu) / sigma
+        
+        X_train_ann = torch.Tensor(X_train)
+        y_train_ann = torch.Tensor(y_train)
+        X_test_ann = torch.Tensor(X_test)
+        y_test_ann = torch.Tensor(y_test)
+        y_train_ann = y_train_ann.view(-1).long()
+        y_test_ann = y_test_ann.view(-1).long()
+
+        H = [1,5,9,18,36,72]
+        errors_ann = []
+        for h in H:
+            # Define the model structure for multi-class
+            n_hidden_units = h
+            model = lambda: torch.nn.Sequential(
+                                torch.nn.Linear(37, n_hidden_units), #M features to H hiden units
+                                torch.nn.LeakyReLU(),                            #torch.nn.ReLU(),torch.nn.Tanh()
+                                torch.nn.Linear(n_hidden_units, 3), # H hidden units to 1 output neuron
+                                torch.nn.Softmax(dim=1) # final tranfer function
+                                )
+            loss_fn = torch.nn.CrossEntropyLoss()
+            max_iter = 500 #200 700 50 500
+
+            net, final_loss, learning_curve = train_neural_net(model,
+                                                            loss_fn,
+                                                            X=X_train_ann,
+                                                            y=y_train_ann,
+                                                            n_replicates=1, # 3 1 10 3
+                                                            max_iter=max_iter)
+            
+            #print('\n\tBest loss: {}\n'.format(final_loss))
+            # Determine estimated class labels for test set
+            y_softmax = net(X_test_ann) # activation of final note, i.e. prediction of network            y_test_ann = y_test_ann.type(dtype=torch.uint8)
+            y_test_est_ann = torch.max(y_softmax, dim=1)[1] # select the label with max possibility
+            # error_ann = np.square(y_test_ann.numpy() - y_test_est_ann.numpy()).sum(axis=0)/len(y_test_ann)
+
+            y_test_ann = y_test_ann.float()
+            y_test_est_ann = y_test_est_ann.float()
+            error_ann = ((y_test_ann - y_test_est_ann) ** 2).mean().item()
+            errors_ann.append(error_ann) # store error rate for current CV fold
+            #print('\n\tANN loss: {}\n'.format(error_ann))
+        # calculate min error and corresponding index in each inner fold
+        min_error_ann_s.append(min(errors_ann))
+        min_error_index = errors_ann.index(min(errors_ann))
+        best_units_num = H[min_error_index]
+        best_units_num_s.append(best_units_num)
+        
+        # calculate baseline mse
+        y_mean_train = np.mean(y_train)
+        y_pred = np.full(len(y_test), y_mean_train)
+        baseline_mse_each_inner_fold = mean_squared_error(y_test, y_pred)
+        baseline_mse_s.append(baseline_mse_each_inner_fold)
+        
+        # baseline_mse = np.power(y_test-y_pred,2).mean() 
+        
+        # Standardize the training and set set based on training set moments
+        mu = np.mean(X_train[:, 1:], 0)
+        sigma = np.std(X_train[:, 1:], 0)
+        
+        X_train[:, 1:] = (X_train[:, 1:] - mu) / sigma
+        X_test[:, 1:] = (X_test[:, 1:] - mu) / sigma
+        
+        # precompute terms
+        Xty = X_train.T @ y_train
+        XtX = X_train.T @ X_train
+        for l in range(0,len(lambdas)):
+            # Compute parameters for current value of lambda and current CV fold
+            # note: "linalg.lstsq(a,b)" is substitue for Matlab's left division operator "\"
+            lambdaI = lambdas[l] * np.eye(M)
+            lambdaI[0,0] = 0 # remove bias regularization
+            w[:,f,l] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
+            # Evaluate training and test performance
+            train_error[f,l] = np.power(y_train-X_train @ w[:,f,l].T,2).mean(axis=0)
+            test_error[f,l] = np.power(y_test-X_test @ w[:,f,l].T,2).mean(axis=0)
+    
+        f=f+1
+
+    # calculate inner-10-fold best record
+    opt_val_err = np.min(np.mean(test_error,axis=0))
+    opt_lambda = lambdas[np.argmin(np.mean(test_error,axis=0))]
+    train_err_vs_lambda = np.mean(train_error,axis=0)
+    test_err_vs_lambda = np.mean(test_error,axis=0)
+    mean_w_vs_lambda = np.squeeze(np.mean(w,axis=1))
+    min_error_ann = min(min_error_ann_s)
+    best_units_num = best_units_num_s[min_error_ann_s.index(min_error_ann)]
+    baseline_mse = sum(baseline_mse_s)/len(baseline_mse_s)
+
+    
+    return opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda, baseline_mse, best_units_num, min_error_ann
+
+def rlr_validate_nmo(X,y,lambdas,cvf=10):
+     
+    '''
+    different calculation method of error : mse, mean square error
+    '''
+    CV = model_selection.KFold(cvf, shuffle=True)
+    M = X.shape[1]
+    w = np.empty((M,cvf,len(lambdas)))
+    train_error = np.empty((cvf,len(lambdas)))
+    test_error = np.empty((cvf,len(lambdas)))
+    min_error_ann_s = []
+    best_units_num_s = []
+    baseline_nmo_s = []
+    f = 0
+    y = y.squeeze()
+    
+    for train_index, test_index in CV.split(X,y):
+        print('\n Inner Crossvalidation Fold: {0}/{1}'.format(f+1,cvf))
+        X_train = X[train_index]
+        y_train = y[train_index]
+        X_test = X[test_index]
+        y_test = y[test_index]
+        
+        # Standardize the training and set set based on training set moments
+        mu = np.mean(X_train[:, 1:], 0)
+        sigma = np.std(X_train[:, 1:], 0)
+        
+        X_train[:, 1:] = (X_train[:, 1:] - mu) / sigma
+        X_test[:, 1:] = (X_test[:, 1:] - mu) / sigma
+        
+        X_train_ann = torch.Tensor(X_train)
+        y_train_ann = torch.Tensor(y_train)
+        X_test_ann = torch.Tensor(X_test)
+        y_test_ann = torch.Tensor(y_test)
+        y_train_ann = y_train_ann.view(-1).long()
+        y_test_ann = y_test_ann.view(-1).long()
+
+        H = [1,5,9,18,36,72]
+        errors_ann = []
+        for h in H:
+            # Define the model structure for multi-class
+            n_hidden_units = h
+            model = lambda: torch.nn.Sequential(
+                                torch.nn.Linear(37, n_hidden_units), #M features to H hiden units
+                                torch.nn.LeakyReLU(),                            #torch.nn.ReLU(),torch.nn.Tanh()
+                                torch.nn.Linear(n_hidden_units, 3), # H hidden units to 1 output neuron
+                                torch.nn.Softmax(dim=1) # final tranfer function
+                                )
+            loss_fn = torch.nn.CrossEntropyLoss()
+            max_iter = 500 #200 700 50 500
+
+            net, final_loss, learning_curve = train_neural_net(model,
+                                                            loss_fn,
+                                                            X=X_train_ann,
+                                                            y=y_train_ann,
+                                                            n_replicates=1, # 3 1 10 3
+                                                            max_iter=max_iter)
+            
+            #print('\n\tBest loss: {}\n'.format(final_loss))
+            # Determine estimated class labels for test set
+            y_softmax = net(X_test_ann) # activation of final note, i.e. prediction of network            y_test_ann = y_test_ann.type(dtype=torch.uint8)
+            y_test_est_ann = torch.max(y_softmax, dim=1)[1] # select the label with max possibility
+            e = y_test_est_ann != y_test_ann
+            error_ann = (sum(e)/len(y_test_ann)).data.numpy()
+            errors_ann.append(error_ann) # store error rate for current CV fold
+            #print('\n\tANN loss: {}\n'.format(error_ann))
+            
+        min_error_ann_s.append(min(errors_ann))
+        min_error_index = errors_ann.index(min(errors_ann))
+        best_units_num = H[min_error_index]
+        best_units_num_s.append(best_units_num)
+        
+        # calculate baseline nmo
+        # counter element number
+        element_counts = Counter(y_train)
+        most_common_element, most_common_count = element_counts.most_common(1)[0] # find the most common element
+        y_pred = np.full(len(y_test), most_common_element)
+        baseline_nmo_each_inner_fold = sum(y_pred != y_test)/len(y_test)
+        baseline_nmo_s.append(baseline_nmo_each_inner_fold)
+        # Standardize the training and set set based on training set moments
+        mu = np.mean(X_train[:, 1:], 0)
+        sigma = np.std(X_train[:, 1:], 0)
+        
+        X_train[:, 1:] = (X_train[:, 1:] - mu) / sigma
+        X_test[:, 1:] = (X_test[:, 1:] - mu) / sigma
+        
+        # precompute terms
+        Xty = X_train.T @ y_train
+        XtX = X_train.T @ X_train
+        for l in range(0,len(lambdas)):
+            # # Compute parameters for current value of lambda and current CV fold
+   
+            mdl = LogisticRegression(penalty='l2', C=1/lambdas[l], max_iter=1000)
+            mdl.fit(X_train, y_train)
+            y_train_est = mdl.predict(X_train).T
+            y_test_est = mdl.predict(X_test).T
+            train_error[f,l] = sum(y_train_est != y_train) / len(y_train)
+            test_error[f,l] = sum(y_test_est != y_test) / len(y_test)
+        f=f+1
+    opt_val_err = np.min(np.mean(test_error,axis=0))
+    opt_lambda = lambdas[np.argmin(np.mean(test_error,axis=0))]
+    train_err_vs_lambda = np.mean(train_error,axis=0)
+    test_err_vs_lambda = np.mean(test_error,axis=0)
+    mean_w_vs_lambda = np.squeeze(np.mean(w,axis=1))
+    min_error_ann = min(min_error_ann_s)
+    best_units_num = best_units_num_s[min_error_ann_s.index(min_error_ann)]
+    baseline_nmo = sum(baseline_nmo_s)/len(baseline_nmo_s)
+    
+    return opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda, baseline_nmo, best_units_num, min_error_ann
+
 def dbplotf(X,y,fun,grid_range,resolution=100.0) :     
     # smoothness of color-coding:
     levels = 100
@@ -704,8 +928,9 @@ def train_neural_net(model, loss_fn, X, y,
         
         # A more complicated optimizer is the Adam-algortihm, which is an extension
         # of SGD to adaptively change the learing rate, which is widely used:
-        optimizer = torch.optim.Adam(net.parameters())
-        
+        # optimizer = torch.optim.Adam(net.parameters())
+        optimizer = torch.optim.Adam(net.parameters(),weight_decay=0.0005)
+
         # Train the network while displaying and storing the loss
         ########print('\t\t{}\t{}\t\t\t{}'.format('Iter', 'Loss','Rel. loss'))
         learning_curve = [] # setup storage for loss at each step
