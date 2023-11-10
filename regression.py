@@ -115,12 +115,6 @@ for train_index, test_index in CV.split(X,y):
     X_test = X[test_index]
     y_test = y[test_index]
     internal_cross_validation = 10
-        
-
-    # ANN #
-    # Extract training and test set for current CV fold, 
-    # and convert them to PyTorch tensors
-    # Values of lambda
     lambdas = np.logspace(-8, 8, 100)
 
     # receive output
