@@ -59,11 +59,9 @@ N, M = X.shape
 # Add offset attribute
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 attributeNames = [u'Offset']+attributeNames
-M = 37
+M = M+1
 K = 5
 CV = model_selection.KFold(K, shuffle=True)
-
-#T = len(lambdas)
 Error_train = np.empty((K,1))
 Error_test = np.empty((K,1))
 Error_train_rlr = np.empty((K,1))
@@ -117,7 +115,7 @@ for train_index, test_index in CV.split(X,y):
     
     # ANN
     model = lambda: torch.nn.Sequential(
-                                torch.nn.Linear(37, best_units_num), #M features to H hiden units
+                                torch.nn.Linear(M, best_units_num), #M features to H hiden units
                                 torch.nn.LeakyReLU(),                            #torch.nn.ReLU(),torch.nn.Tanh()
                                 torch.nn.Linear(best_units_num, 3), # H hidden units to 1 output neuron
                                 torch.nn.Softmax(dim=1) # final tranfer function
