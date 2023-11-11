@@ -45,9 +45,7 @@ for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
         value_to_rank = {value: rank +1 for rank, value in enumerate(unique_values)}
         data_matrix[:, col_index] = np.vectorize(value_to_rank.get)(current_column)
 
-scaler = StandardScaler()
-normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation 1
-X = normalized_data # if use pca_data, remember change some parameters in ANN #
+X = data_matrix
 y = np.array(target_to_num)
 
 ###############
@@ -59,8 +57,8 @@ N, M = X.shape
 # Add offset attribute
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 attributeNames = [u'Offset']+attributeNames
-M = 37
-K = 5
+M = M+1
+K = 10
 CV = model_selection.KFold(K, shuffle=True)
 Error_train = np.empty((K,1))
 Error_test = np.empty((K,1))
@@ -93,7 +91,7 @@ for train_index, test_index in CV.split(X,y):
     y_train = y[train_index]
     X_test = X[test_index]
     y_test = y[test_index]
-    internal_cross_validation = 5
+    internal_cross_validation = 10
     lambdas = np.logspace(-8, 8, 100)
 
     # receive output
@@ -116,13 +114,13 @@ for train_index, test_index in CV.split(X,y):
     
     # ANN
     model = lambda: torch.nn.Sequential(
-                                torch.nn.Linear(37, best_units_num), #M features to H hiden units
+                                torch.nn.Linear(M, best_units_num), #M features to H hiden units
                                 torch.nn.LeakyReLU(),
                                 torch.nn.Linear(best_units_num, 3), # H hidden units to 3 output neuron, cause we have 3 targets
                                 # torch.nn.Softmax(dim=1) # softmax for multi-class
                                 )
     loss_fn = torch.nn.CrossEntropyLoss()
-    max_iter = 100 #200 700 50 500
+    max_iter = 300 #200 700 50 500
     net, final_loss, learning_curve = train_neural_net(model,
                                                     loss_fn,
                                                     X=X_train_ann,

@@ -45,9 +45,7 @@ for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
         value_to_rank = {value: rank +1 for rank, value in enumerate(unique_values)}
         data_matrix[:, col_index] = np.vectorize(value_to_rank.get)(current_column)
 
-scaler = StandardScaler()
-normalized_data = scaler.fit_transform(data_matrix) # mean 0, standard deviation 1
-X = normalized_data # if use pca_data, remember change some parameters in ANN #
+X = data_matrix
 y = np.array(target_to_num)
 
 ################
