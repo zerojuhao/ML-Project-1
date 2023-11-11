@@ -58,7 +58,7 @@ N, M = X.shape
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 attributeNames = [u'Offset']+attributeNames
 M = M+1
-K = 2
+K = 3
 CV = model_selection.KFold(K, shuffle=True)
 Error_train = np.empty((K,1))
 Error_test = np.empty((K,1))
@@ -91,7 +91,7 @@ for train_index, test_index in CV.split(X,y):
     y_train = y[train_index]
     X_test = X[test_index]
     y_test = y[test_index]
-    internal_cross_validation = 2
+    internal_cross_validation = 3
     lambdas = np.logspace(-8, 8, 100)
 
     # receive output
@@ -115,7 +115,7 @@ for train_index, test_index in CV.split(X,y):
     # ANN
     model = lambda: torch.nn.Sequential(
                                 torch.nn.Linear(M, best_units_num), #M features to H hiden units
-                                torch.nn.LeakyReLU(),
+                                torch.nn.ReLU(),
                                 torch.nn.Linear(best_units_num, 3), # H hidden units to 3 output neuron, cause we have 3 targets
                                 # torch.nn.Softmax(dim=1) # softmax for multi-class
                                 )
