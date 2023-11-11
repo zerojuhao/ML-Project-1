@@ -207,7 +207,7 @@ plt.show()
 lower_bounds_ab = [row[0] for row in CI_ab_c]
 upper_bounds_ab = [row[1] for row in CI_ab_c]
 column_means_ab = [sum(row) / len(row) for row in CI_ab_c]
-center_line1_ab = np.mean(np.concatenate([lower_bounds,upper_bounds]))
+center_line1_ab = np.mean(np.concatenate([lower_bounds_ab,upper_bounds_ab]))
 x = np.arange(1,K+1)
 plt.figure(figsize=(8, 3))
 for x, start, end in zip(x, lower_bounds_ab, upper_bounds_ab):
