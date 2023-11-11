@@ -15,9 +15,10 @@ from scipy.io import loadmat
 import sklearn.linear_model as lm
 from sklearn import model_selection
 import torch
-from toolbox_02450 import train_neural_net, draw_neural_net, visualize_decision_boundary, rlr_validate_mse, rlr_validate_nmo
+from toolbox_02450 import train_neural_net, draw_neural_net, visualize_decision_boundary, rlr_validate_mse, rlr_validate_nmo, mcnemar
 from scipy import stats
 import statsmodels.stats.contingency_tables as tbl
+from collections import Counter
 
 
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  
@@ -247,7 +248,7 @@ N, M = X.shape
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 attributeNames = [u'Offset']+attributeNames
 M = 37
-K = 10
+K = 5
 CV = model_selection.KFold(K, shuffle=True)
 
 #T = len(lambdas)
@@ -265,44 +266,98 @@ model_ann_performance = []
 model_linear_regression_performance = []
 model_baseline_performance = []
 k=0
+
+thetahat_al_o = []
+CI_al_o = []
+p_al_o = []
+
+thetahat_ab_o = []
+CI_ab_o = []
+p_ab_o = []
+
+thetahat_lb_o = []
+CI_lb_o = []
+p_lb_o = []
+
 for train_index, test_index in CV.split(X,y):
-    print('\n ***Outer Crossvalidation Fold: {0}/{1}'.format(k+1,K))
+    print('\n ~~~Outer Crossvalidation Fold: {0}/{1}'.format(k+1,K))
     # extract training and test set for current CV fold
     X_train = X[train_index]
     y_train = y[train_index]
     X_test = X[test_index]
     y_test = y[test_index]
-    internal_cross_validation = 10
+    internal_cross_validation = 5
     lambdas = np.logspace(-8, 8, 100)
     
     # receive output
     opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda, baseline_nmo, best_units_num, min_error_ann = rlr_validate_nmo(X_train, y_train, lambdas, internal_cross_validation)
+    
+    # Standardize the training and set set based on training set moments
+    mu = np.mean(X_train[:, 1:], 0)
+    sigma = np.std(X_train[:, 1:], 0)
+    
+    X_train[:, 1:] = (X_train[:, 1:] - mu) / sigma
+    X_test[:, 1:] = (X_test[:, 1:] - mu) / sigma
+    
+    X_train_ann = torch.Tensor(X_train)
+    y_train_ann = torch.Tensor(y_train)
+    X_test_ann = torch.Tensor(X_test)
+    y_test_ann = torch.Tensor(y_test)
+    y_train_ann = y_train_ann.view(-1).long()
+    y_test_ann = y_test_ann.view(-1).long()
+    
+    # ANN
+    model = lambda: torch.nn.Sequential(
+                                torch.nn.Linear(37, best_units_num), #M features to H hiden units
+                                torch.nn.LeakyReLU(),                            #torch.nn.ReLU(),torch.nn.Tanh()
+                                torch.nn.Linear(best_units_num, 3), # H hidden units to 1 output neuron
+                                torch.nn.Softmax(dim=1) # final tranfer function
+                                )
+    loss_fn = torch.nn.CrossEntropyLoss()
+    max_iter = 100 #200 700 50 500
 
-    # Standardize outer fold based on training set, and save the mean and standard
-    # deviations since they're part of the model (they would be needed for
-    # making new predictions) - for brevity we won't always store these in the scripts
-    mu[k, :] = np.mean(X_train[:, 1:], 0)
-    sigma[k, :] = np.std(X_train[:, 1:], 0)
+    net, final_loss, learning_curve = train_neural_net(model,
+                                                    loss_fn,
+                                                    X=X_train_ann,
+                                                    y=y_train_ann,
+                                                    n_replicates=1, # 3 1 10 3
+                                                    max_iter=max_iter)
     
-    X_train[:, 1:] = (X_train[:, 1:] - mu[k, :] ) / sigma[k, :] 
-    X_test[:, 1:] = (X_test[:, 1:] - mu[k, :] ) / sigma[k, :] 
+            #print('\n\tBest loss: {}\n'.format(final_loss))
+            # Determine estimated class labels for test set
+    y_softmax = net(X_test_ann) # activation of final note, i.e. prediction of network            y_test_ann = y_test_ann.type(dtype=torch.uint8)
+    y_test_est_ann = (torch.max(y_softmax, dim=1)[1])  # select the label with max possibility
     
-    Xty = X_train.T @ y_train
-    XtX = X_train.T @ X_train
-    
-    # Estimate weights for the optimal value of lambda, on entire training set
-    lambdaI = opt_lambda * np.eye(M)
-    lambdaI[0,0] = 0 # Do no regularize the bias term
-    w_rlr[:,k] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
-    # Compute mean squared error with regularization with optimal lambda
-    Error_train_rlr[k] = np.square(y_train-X_train @ w_rlr[:,k]).sum(axis=0)/y_train.shape[0]
-    Error_test_rlr[k] = np.square(y_test-X_test @ w_rlr[:,k]).sum(axis=0)/y_test.shape[0]
-    # Compute mean squared error without regularization
-    m = lm.LinearRegression().fit(X_train, y_train)
-    Error_train[k] = np.square(y_train-m.predict(X_train)).sum()/y_train.shape[0]
-    Error_test[k] = np.square(y_test-m.predict(X_test)).sum()/y_test.shape[0]
+    # L R
+    mdl = LogisticRegression(penalty='l2', C=1/opt_lambda, max_iter=1000)
+    mdl.fit(X_train, y_train)
+    y_test_est = mdl.predict(X_test).T
 
-    print(
+    
+    # calculate baseline nmo
+    element_counts = Counter(y_train)
+    most_common_element, most_common_count = element_counts.most_common(1)[0] # find the most common element
+    y_test_est_baseline = np.full(len(y_test), most_common_element)
+    
+    # calculate mcnemar in each inner fold
+    thetahat_al, CI_al, p_al = mcnemar(y_test, y_test_est_ann.data.numpy(), y_test_est, alpha=0.05)
+    thetahat_ab, CI_ab, p_ab = mcnemar(y_test, y_test_est_ann.data.numpy(), y_test_est_baseline, alpha=0.05)
+    thetahat_lb, CI_lb, p_lb = mcnemar(y_test, y_test_est, y_test_est_ann.data.numpy(), alpha=0.05)
+
+    thetahat_al_o.append(thetahat_al)
+    CI_al_o.append(CI_al)
+    p_al_o.append(p_al)
+
+    thetahat_ab_o.append(thetahat_ab)
+    CI_ab_o.append(CI_ab)
+    p_ab_o.append(p_ab)
+
+    thetahat_lb_o.append(thetahat_lb)
+    CI_lb_o.append(CI_lb)
+    p_lb_o.append(p_lb)
+    
+    # evaluation
+    print('\n',
         'Optimal Hidden units: {0}'.format(np.mean(best_units_num)), '\n',
         'ANN error: {0}'.format(np.mean(min_error_ann)), '\n',
         'Optimal λ: {0}'.format(np.log10(opt_lambda)), '\n',
@@ -311,83 +366,28 @@ for train_index, test_index in CV.split(X,y):
         #'Test error without: {0}'.format(Error_test.mean()),'\n',
         #'Test error: {0}'.format(Error_test_rlr.mean()), '\n',        
         )
-    model_ann_performance.append(min_error_ann)
-    model_linear_regression_performance.append(opt_val_err)
-    model_baseline_performance.append(baseline_nmo)
     k+=1
+    
 
-ann_performance = np.array(model_ann_performance)
-linear_regression_performance = np.array(model_linear_regression_performance)
-baseline_performance = np.array(model_baseline_performance)
 #############################
 # classification_evaluation #
 #############################
 #%%
-# get t and p value
-
-# if p_value_ann_vs_lr < 0.05:
-#     print("Significant differences in performance between ANN and Linear Regression")
-# else:
-#     print("No significant difference in performance between ANN and Linear Regression")
-# print(f"t-statistic ANN vs LR: {t_stat_ann_vs_lr}, p-value: {p_value_ann_vs_lr}")
-
-# if p_value_ann_vs_baseline < 0.05:
-#     print("Significant differences in performance between ANN and Baseline")
-# else:
-#     print("No significant difference in performance between ANN and Baseline")
-# print(f"t-statistic ANN vs Baseline: {t_stat_ann_vs_baseline}, p-value: {p_value_ann_vs_baseline}")
-
-# if p_value_lr_vs_baseline < 0.05:
-#     print("Significant differences in performance between Linear Regression and Baseline")
-# else:
-#     print("No significant difference in performance between Linear Regression and Baseline")
-# print(f"t-statistic LR vs Baseline: {t_stat_lr_vs_baseline}, p-value: {p_value_lr_vs_baseline}")
-
-# models = ['ANN', 'Linear Regression', 'Baseline']
-# p_values = [p_value_ann_vs_lr, p_value_ann_vs_baseline, p_value_lr_vs_baseline]
-# plt.bar(models, p_values, color=['blue', 'orange', 'red'])
-# plt.xlabel('Models')
-# plt.ylabel('p-value')
-# plt.title('p-value for Model Comparisons')
-# plt.show()
-
-# # calculate confidence interval
-# def confidence_interval(data, alpha=0.05):
-#     mean = np.mean(data)
-#     std_dev = np.std(data, ddof=1)
-#     n = len(data)
-#     z = stats.t.ppf(1 - alpha / 2, n - 1)
-#     margin_of_error = z * (std_dev / np.sqrt(n))
-#     lower_bound = mean - margin_of_error
-#     upper_bound = mean + margin_of_error
-#     return (lower_bound, upper_bound)
-
-# ann_ci = confidence_interval(ann_performance)
-# linear_regression_ci = confidence_interval(linear_regression_performance)
-# baseline_ci = confidence_interval(baseline_performance)
-
-# print("ANN Confidence Interval:\n", ann_ci)
-# print("Linear Regression Confidence Interval:\n", linear_regression_ci)
-# print("Baseline Confidence Interval:\n", baseline_ci)
-
-# models = ['ANN', 'Linear Regression', 'Baseline']
-# mean_performance = [np.mean(ann_performance), np.mean(linear_regression_performance), np.mean(baseline_performance)]
-# conf_intervals = [ann_ci, linear_regression_ci, baseline_ci]
-# performance_data = [ann_performance, linear_regression_performance, baseline_performance]
-# x_pos = np.arange(len(models))
-# bar_width = 0.3
-
-# plt.figure(figsize=(10, 6))
-
-# for i, model in enumerate(models):
-#     lower_bound, upper_bound = conf_intervals[i]
-#     y = mean_performance[i]
-#     plt.bar(x_pos[i], y, bar_width)
-#     plt.errorbar(x_pos[i], y, yerr=[[y - lower_bound], [upper_bound - y]], fmt='o',color = 'black', capsize=5)
-
-# plt.xticks(x_pos, models)
-# plt.xlabel('Models')
-# plt.ylabel('Performance')
-# plt.title('Confidence Intervals for Different Models')
+# # 已知的两组数据的置信区间
+# x_values = np.arange(1, K+1, 1)
+# # 提取置信区间的下限和上限
+# # lower_bounds = CI_al_o[0]
+# # upper_bounds = CI_al_o[1]
+# lower_bounds = tuple(row[0] for row in CI_al_o)
+# upper_bounds = tuple(row[1] for row in CI_al_o)
+# # 绘制带有误差棒的折线图
+# plt.errorbar(x_values, lower_bounds, yerr=[lower_bounds, upper_bounds], fmt='o-', capsize=5)
+# # 绘制中心线
+# plt.plot(x_values, [center_line1, center_line1], color='blue', linestyle='--', label='Group 1 Mean')
+# plt.xlabel('X-axis')
+# plt.ylabel('Y-axis')
 # plt.legend()
 # plt.show()
+print(CI_al_o)
+
+
