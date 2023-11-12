@@ -60,7 +60,7 @@ N, M = X.shape
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 attributeNames = [u'Offset']+attributeNames
 M = M+1
-K = 3
+K = 2
 CV = model_selection.KFold(K, shuffle=True)
 Error_train = np.empty((K,1))
 Error_test = np.empty((K,1))
@@ -93,7 +93,7 @@ for train_index, test_index in CV.split(X,y):
     y_train = y[train_index]
     X_test = X[test_index]
     y_test = y[test_index]
-    internal_cross_validation = 3
+    internal_cross_validation = 2
     lambdas = np.logspace(-8, 8, 100)
 
     # receive output
@@ -122,7 +122,7 @@ for train_index, test_index in CV.split(X,y):
                                 # torch.nn.Softmax(dim=1) # softmax for multi-class
                                 )
     loss_fn = torch.nn.MSELoss()
-    max_iter = 100 #200 700 50 500
+    max_iter = 5000 #200 700 50 500
     net, final_loss, learning_curve = train_neural_net(model,
                                                     loss_fn,
                                                     X=X_train_ann,
@@ -150,16 +150,19 @@ for train_index, test_index in CV.split(X,y):
     z_lb, CI_lb, p_lb = ttest_twomodels(y_test, y_test_pred, y_pred_baseline, alpha=0.05, loss_norm_p=1)
 
     z_al_r.append(z_al)
-    CI_al_r.append(CI_al)
-    p_al_r.append(p_al)
+    CI_al_1  = [arr[0] for arr in CI_al] # extract repeated 2 elements
+    CI_al_r.append(CI_al_1)
+    p_al_r.append(np.mean(p_al))
     
     z_ab_r.append(z_ab)
-    CI_ab_r.append(CI_ab)
-    p_ab_r.append(p_ab)
+    CI_ab_1  = [arr[0] for arr in CI_ab] # extract repeated 2 elements
+    CI_ab_r.append(CI_ab_1)
+    p_ab_r.append(np.mean(p_ab))
     
     z_lb_r.append(z_lb)
+    #CI_lb_1  = [arr[0] for arr in CI_lb] # extract repeated 2 elements
     CI_lb_r.append(CI_lb)
-    p_lb_r.append(p_lb)
+    p_lb_r.append(np.mean(p_lb))
     
     print('\n',
         'Optimal Hidden units: {0}'.format(np.mean(best_units_num)), '\n',
@@ -178,7 +181,7 @@ for train_index, test_index in CV.split(X,y):
 ###########################
 #%%
 # show ANN vs Linear Regression
-lower_bounds_al = CI_al_r[:,0]
+lower_bounds_al = [row[0] for row in CI_al_r]
 upper_bounds_al = [row[1] for row in CI_al_r]
 column_means_al = [sum(row) / len(row) for row in CI_al_r]
 center_line1_al = np.mean(np.concatenate([lower_bounds_al, upper_bounds_al]))
@@ -187,7 +190,7 @@ plt.figure(figsize=(8, 3))
 for x, start, end in zip(x, lower_bounds_al, upper_bounds_al):
     plt.bar(x, height=end-start, bottom=start, width = 0.2)
     
-plt.scatter(np.arange(1, k+1), np.array(column_means_al), color='black', marker='o', label='Mean Value')
+plt.scatter(np.arange(1, k+1), column_means_al, color='black', marker='o', label='Mean Value')
 plt.axhline(center_line1_al, color='red', linestyle='--', label='mean')
 plt.xlabel('K-fold')
 plt.ylabel('Confidence interval')
@@ -210,7 +213,7 @@ plt.figure(figsize=(8, 3))
 for x, start, end in zip(x, lower_bounds_ab, upper_bounds_ab):
     plt.bar(x, height=end-start, bottom=start, width = 0.2)
     
-plt.scatter(np.arange(1, k+1), np.array(column_means_ab), color='black', marker='o', label='Mean Value')
+plt.scatter(np.arange(1, k+1), column_means_ab, color='black', marker='o', label='Mean Value')
 plt.axhline(center_line1_ab, color='red', linestyle='--', label='mean')
 plt.xlabel('K-fold')
 plt.ylabel('Confidence interval')
@@ -233,7 +236,7 @@ plt.figure(figsize=(8, 3))
 for x, start, end in zip(x, lower_bounds_lb, upper_bounds_lb):
     plt.bar(x, height=end-start, bottom=start, width = 0.2)
     
-plt.scatter(np.arange(1, k+1), np.array(column_means_lb), color='black', marker='o', label='Mean Value')
+plt.scatter(np.arange(1, k+1), column_means_lb, color='black', marker='o', label='Mean Value')
 plt.axhline(center_line1_lb, color='red', linestyle='--', label='mean')
 plt.xlabel('K-fold')
 plt.ylabel('Confidence interval')
