@@ -46,13 +46,15 @@ for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
         data_matrix[:, col_index] = np.vectorize(value_to_rank.get)(current_column)
 
 X = data_matrix
-y = np.array(target_to_num)
+y = X[:, 6]
+X = np.delete(X, 6, axis=1)
 
 ###############
 # regression_b#
 ###############
 
 #%%
+
 N, M = X.shape
 # Add offset attribute
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
@@ -109,18 +111,18 @@ for train_index, test_index in CV.split(X,y):
     y_train_ann = torch.Tensor(y_train)
     X_test_ann = torch.Tensor(X_test)
     y_test_ann = torch.Tensor(y_test)
-    y_train_ann = y_train_ann.view(-1).long()
-    y_test_ann = y_test_ann.view(-1).long()
+    y_train_ann = y_train_ann.view(-1,1)
+    y_test_ann = y_test_ann.view(-1,1)
     
     # ANN
     model = lambda: torch.nn.Sequential(
                                 torch.nn.Linear(M, best_units_num), #M features to H hiden units
                                 torch.nn.ReLU(),
-                                torch.nn.Linear(best_units_num, 3), # H hidden units to 3 output neuron, cause we have 3 targets
+                                torch.nn.Linear(best_units_num, 1), # H hidden units to 3 output neuron, cause we have 3 targets
                                 # torch.nn.Softmax(dim=1) # softmax for multi-class
                                 )
-    loss_fn = torch.nn.CrossEntropyLoss()
-    max_iter = 300 #200 700 50 500
+    loss_fn = torch.nn.MSELoss()
+    max_iter = 100 #200 700 50 500
     net, final_loss, learning_curve = train_neural_net(model,
                                                     loss_fn,
                                                     X=X_train_ann,
@@ -129,9 +131,7 @@ for train_index, test_index in CV.split(X,y):
                                                     max_iter=max_iter)
     
     # Determine estimated class labels for test set
-    y_softmax = net(X_test_ann) # activation of final note, i.e. prediction of network            y_test_ann = y_test_ann.type(dtype=torch.uint8)
-    y_test_est_ann = torch.max(y_softmax, dim=1)[1] # select the label with max possibility
-
+    y_test_est_ann = net(X_test_ann) # activation of final note, i.e. prediction of network            y_test_ann = y_test_ann.type(dtype=torch.uint8)
     # Linear Regression
     Xty = X_train.T @ y_train
     XtX = X_train.T @ X_train
@@ -177,11 +177,11 @@ for train_index, test_index in CV.split(X,y):
 # regression_b_evaluation #
 ###########################
 #%%
-# show ANN vs Logistic Regression
-lower_bounds_al = [row[0] for row in CI_al_r]
+# show ANN vs Linear Regression
+lower_bounds_al = [row[1] for row in CI_al_r]
 upper_bounds_al = [row[1] for row in CI_al_r]
 column_means_al = [sum(row) / len(row) for row in CI_al_r]
-center_line1_al = np.mean(np.concatenate([lower_bounds_al,upper_bounds_al]))
+center_line1_al = np.mean(np.concatenate([lower_bounds_al, upper_bounds_al]))
 x = np.arange(1,K+1)
 plt.figure(figsize=(8, 3))
 for x, start, end in zip(x, lower_bounds_al, upper_bounds_al):
@@ -223,7 +223,7 @@ plt.ylabel('p Value')
 plt.title('ANN vs Baseline')
 plt.show()
 
-# show Logistic Regression vs Baseline
+# show Linear Regression vs Baseline
 lower_bounds_lb = [row[0] for row in CI_lb_r]
 upper_bounds_lb = [row[1] for row in CI_lb_r]
 column_means_lb = [sum(row) / len(row) for row in CI_lb_r]
@@ -237,11 +237,11 @@ plt.scatter(np.arange(1, k+1), np.array(column_means_lb), color='black', marker=
 plt.axhline(center_line1_lb, color='red', linestyle='--', label='mean')
 plt.xlabel('K-fold')
 plt.ylabel('Confidence interval')
-plt.title('Logistic Regression vs Baseline')
+plt.title('Linear Regression vs Baseline')
 plt.show()
 plt.figure(figsize=(8, 3))
 plt.plot(np.arange(1, k+1), p_lb_r, marker='o', linestyle='-', color = 'red')
 plt.xlabel('K-fold')
 plt.ylabel('p Value')
-plt.title('Logistic Regression vs Baseline')
+plt.title('Linear Regression vs Baseline')
 plt.show()
