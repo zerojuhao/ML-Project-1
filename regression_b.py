@@ -178,7 +178,7 @@ for train_index, test_index in CV.split(X,y):
 ###########################
 #%%
 # show ANN vs Linear Regression
-lower_bounds_al = [row[1] for row in CI_al_r]
+lower_bounds_al = CI_al_r[:,0]
 upper_bounds_al = [row[1] for row in CI_al_r]
 column_means_al = [sum(row) / len(row) for row in CI_al_r]
 center_line1_al = np.mean(np.concatenate([lower_bounds_al, upper_bounds_al]))

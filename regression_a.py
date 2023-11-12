@@ -38,7 +38,7 @@ target_to_num = [class_name_mapping[className] for className in target] # drop o
 one_hot_encoded = LabelBinarizer().fit_transform(target_to_num)
 
 # revise partial data according to appendix of reference
-for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
+for col_index in [0,1,3,5,7,8,9,10,11]:
         current_column = data_matrix[:, col_index]
         unique_values = np.unique(current_column)
         unique_values.sort()
@@ -46,8 +46,9 @@ for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
         data_matrix[:, col_index] = np.vectorize(value_to_rank.get)(current_column)
 
 X = data_matrix
-y = np.array(target_to_num)
-
+y = X[:, 6]
+X = np.delete(X, 6, axis=1)
+attributeNames.remove('Previous qualification (grade)')
 ################
 # regression_a #
 ################
@@ -67,7 +68,7 @@ semilogx(lambdas,mean_w_vs_lambda.T[:,1:],'.-') # Don't plot the bias term
 xlabel('Regularization factor')
 ylabel('Mean Coefficient Values')
 grid()
-legend(attributeNames[1:], loc='best')
+legend(attributeNames[:], loc='best')
 
 subplot(1,2,2)
 title('Optimal lambda: 1e{0}'.format(np.log10(opt_lambda)))
