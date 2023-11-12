@@ -26,29 +26,45 @@ plt.rcParams['axes.unicode_minus'] = False  # display “ - ”
 
 
 data = pd.read_csv('dropout_data.csv', delimiter=';')
-# data.columns = [col.replace('\t', '') for col in data.columns]
-data_no_target = data.drop(columns=['Target']) # delete target column
-data_matrix = data_no_target.values  # data matrix
-target = data['Target']
-attributeNames = data_no_target.columns.tolist()
-classNames = target.unique().tolist()
-class_num = len(classNames)
-class_name_mapping = {className: index for index, className in enumerate(classNames)}
-target_to_num = [class_name_mapping[className] for className in target] # drop out = 0, graduate = 1, enrolled = 2
-one_hot_encoded = LabelBinarizer().fit_transform(target_to_num)
+data.columns = [col.replace('\t', '') for col in data.columns]
+# data_no_target = data.drop(columns=['Target']) # delete target column
+# data_matrix = data_no_target.values  # data matrix
+# target = data['Target']
+# attributeNames = data_no_target.columns.tolist()
+# classNames = target.unique().tolist()
+# class_num = len(classNames)
+# class_name_mapping = {className: index for index, className in enumerate(classNames)}
+# target_to_num = [class_name_mapping[className] for className in target] # drop out = 0, graduate = 1, enrolled = 2
+# one_hot_encoded = LabelBinarizer().fit_transform(target_to_num)
+
+# # revise partial data according to appendix of reference
+# for col_index in [0,1,3,5,7,8,9,10,11]:
+#         current_column = data_matrix[:, col_index]
+#         unique_values = np.unique(current_column)
+#         unique_values.sort()
+#         value_to_rank = {value: rank +1 for rank, value in enumerate(unique_values)}
+#         data_matrix[:, col_index] = np.vectorize(value_to_rank.get)(current_column)
 
 # revise partial data according to appendix of reference
-for col_index in [0,1,3,5,7,8,9,10,11]:
-        current_column = data_matrix[:, col_index]
+for col_index in [0,1,3,5,6,7,8,9]:
+        current_column = data.values[:, col_index]
         unique_values = np.unique(current_column)
         unique_values.sort()
         value_to_rank = {value: rank +1 for rank, value in enumerate(unique_values)}
-        data_matrix[:, col_index] = np.vectorize(value_to_rank.get)(current_column)
+        data.values[:, col_index] = np.vectorize(value_to_rank.get)(current_column)
 
-X = data_matrix
-y = X[:, 6]
-X = np.delete(X, 6, axis=1)
-attributeNames.remove('Previous qualification (grade)')
+
+
+features = data.drop(columns=['Target', 'Previous qualification (grade)', 'Admission grade'])
+y = data['Previous qualification (grade)'].values
+X = features.values  # Data matrix
+attributeNames = features.columns.tolist()
+
+# X = data_matrix
+# y = X[:, 6]
+# X = np.delete(X, 6, axis=1)
+# X = np.delete(X, 11, axis=1)
+# attributeNames.remove('Previous qualification (grade)')
 ###############
 # regression_b#
 ###############
@@ -60,7 +76,7 @@ N, M = X.shape
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 attributeNames = [u'Offset']+attributeNames
 M = M+1
-K = 10
+K = 3
 CV = model_selection.KFold(K, shuffle=True)
 Error_train = np.empty((K,1))
 Error_test = np.empty((K,1))
@@ -93,7 +109,7 @@ for train_index, test_index in CV.split(X,y):
     y_train = y[train_index]
     X_test = X[test_index]
     y_test = y[test_index]
-    internal_cross_validation = 10
+    internal_cross_validation = 3
     lambdas = np.logspace(-8, 8, 100)
 
     # receive output
@@ -122,7 +138,7 @@ for train_index, test_index in CV.split(X,y):
                                 # torch.nn.Softmax(dim=1) # softmax for multi-class
                                 )
     loss_fn = torch.nn.MSELoss()
-    max_iter = 5000 #200 700 50 500
+    max_iter = 1000 #200 700 50 500
     net, final_loss, learning_curve = train_neural_net(model,
                                                     loss_fn,
                                                     X=X_train_ann,
@@ -131,7 +147,12 @@ for train_index, test_index in CV.split(X,y):
                                                     max_iter=max_iter)
     
     # Determine estimated class labels for test set
+    print('best loss', final_loss)
     y_test_est_ann = net(X_test_ann) # activation of final note, i.e. prediction of network            y_test_ann = y_test_ann.type(dtype=torch.uint8)
+    y_test_ann = y_test_ann.float()
+    y_test_est_ann = y_test_est_ann.float()
+    error_ann = ((y_test_ann - y_test_est_ann) ** 2).mean().item()
+    
     # Linear Regression
     Xty = X_train.T @ y_train
     XtX = X_train.T @ X_train
@@ -139,10 +160,13 @@ for train_index, test_index in CV.split(X,y):
     lambdaI[0,0] = 0 # Do no regularize the bias term
     w_rlr[:,k] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
     y_test_pred = X_test @ w_rlr[:,k].T
+    error_lr = ((y_test - y_test_pred) ** 2).mean().item()
     
     # Baseline
     y_mean_train = np.mean(y_train)
     y_pred_baseline = np.full(len(y_test), y_mean_train)
+    error_bl = ((y_pred_baseline - y_test) ** 2).mean().item()
+    
     
     # calculate t-test of each inner fold
     z_al, CI_al, p_al = ttest_twomodels(y_test, y_test_est_ann.data.numpy(), y_test_pred, alpha=0.05, loss_norm_p=1)
@@ -166,10 +190,11 @@ for train_index, test_index in CV.split(X,y):
     
     print('\n',
         'Optimal Hidden units: {0}'.format(np.mean(best_units_num)), '\n',
-        'ANN error: {0}'.format(np.mean(min_error_ann)), '\n',
+        # 'ANN error: {0}'.format(np.mean(min_error_ann)), '\n',
+        'ANN error: {0}'.format(error_ann), '\n',
         'Optimal λ: {0}'.format(np.log10(opt_lambda)), '\n',
-        'Linear Regression error: {0}'.format(opt_val_err), '\n',
-        'Baseline error: {0}'.format(np.mean(baseline_mse)), '\n',
+        'Linear Regression error: {0}'.format(error_lr), '\n',
+        'Baseline error: {0}'.format(error_bl), '\n',
         #'Test error without: {0}'.format(Error_test.mean()),'\n',
         #'Test error: {0}'.format(Error_test_rlr.mean()), '\n',        
         )
@@ -194,13 +219,13 @@ plt.scatter(np.arange(1, k+1), column_means_al, color='black', marker='o', label
 plt.axhline(center_line1_al, color='red', linestyle='--', label='mean')
 plt.xlabel('K-fold')
 plt.ylabel('Confidence interval')
-plt.title('ANN vs Logistic Regression')
+plt.title('ANN vs Linear Regression')
 plt.show()
 plt.figure(figsize=(8, 3))
 plt.plot(np.arange(1, k+1), p_al_r, marker='o', linestyle='-', color = 'red')
 plt.xlabel('K-fold')
 plt.ylabel('p Value')
-plt.title('ANN vs Logistic Regression')
+plt.title('ANN vs Linear Regression')
 plt.show()
 
 # show ANN vs Baseline
