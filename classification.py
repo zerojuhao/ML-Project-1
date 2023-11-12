@@ -38,7 +38,7 @@ target_to_num = [class_name_mapping[className] for className in target] # drop o
 one_hot_encoded = LabelBinarizer().fit_transform(target_to_num)
 
 # revise partial data according to appendix of reference
-for col_index in [0,1,3,5,6,7,8,9,10,11,12]:
+for col_index in [0,1,3,5,7,8,9,10,11]:
         current_column = data_matrix[:, col_index]
         unique_values = np.unique(current_column)
         unique_values.sort()
