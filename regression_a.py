@@ -78,5 +78,5 @@ ylabel('Squared error (crossvalidation)')
 legend(['Train error','Validation error'])
 grid()
 
-plt.savefig("generalization error.png", dpi=50)  # save image, and set dpi
+plt.savefig("generalization error.png", dpi=500)  # save image, and set dpi
 show()
