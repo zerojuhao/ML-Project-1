@@ -49,6 +49,7 @@ X = data_matrix
 y = X[:, 6]
 X = np.delete(X, 6, axis=1)
 attributeNames.remove('Previous qualification (grade)')
+attributeNames = [u'Offset']+attributeNames
 ################
 # regression_a #
 ################
@@ -64,11 +65,11 @@ opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lamb
 # Display the results for the last cross-validation fold
 figure(K, figsize=(12,8))
 subplot(1,2,1)
-semilogx(lambdas,mean_w_vs_lambda.T[:,:],'.-') # Don't plot the bias term
+semilogx(lambdas,mean_w_vs_lambda.T[:,1:],'.-') # Don't plot the bias term
 xlabel('Regularization factor')
 ylabel('Mean Coefficient Values')
 grid()
-legend(attributeNames[:], loc='best')
+legend(attributeNames[1:], loc='best')
 
 subplot(1,2,2)
 title('Optimal lambda: 1e{0}'.format(np.log10(opt_lambda)))
