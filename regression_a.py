@@ -3,27 +3,8 @@ from sklearn.preprocessing import StandardScaler, LabelBinarizer
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from scipy.linalg import svd
-from sklearn.linear_model import Ridge, LogisticRegression, LinearRegression
-from sklearn.model_selection import cross_val_score, train_test_split
-from sklearn.impute import SimpleImputer
-from sklearn.model_selection import KFold, GridSearchCV, cross_val_score
-from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 from toolbox_02450 import rlr_validate
 from matplotlib.pylab import (figure, semilogx, loglog, xlabel, ylabel, legend, title, subplot, show, grid)
-from scipy.io import loadmat
-import sklearn.linear_model as lm
-from sklearn import model_selection
-import torch
-from toolbox_02450 import train_neural_net, draw_neural_net, visualize_decision_boundary, rlr_validate_mse, rlr_validate_nmo, mcnemar, ttest_twomodels
-from scipy import stats
-import statsmodels.stats.contingency_tables as tbl
-from collections import Counter
-
-
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  
-plt.rcParams['axes.unicode_minus'] = False  # display “ - ”
-
 
 data = pd.read_csv('dropout_data.csv', delimiter=';')
 # data.columns = [col.replace('\t', '') for col in data.columns]
@@ -63,15 +44,26 @@ lambdas = np.logspace(-8, 8, 100)
 opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X, y, lambdas, K)
 
 # Display the results for the last cross-validation fold
-figure(K, figsize=(12,8))
-subplot(1,2,1)
-semilogx(lambdas,mean_w_vs_lambda.T[:,1:],'.-') # Don't plot the bias term
+
+colormap = plt.get_cmap('tab20', len(attributeNames) - 1)
+markers = ['o', 's', 'D', 'v', '<', '>', 'p']
+line_styles = ['-', '--', '-.', ':']
+
+figure(figsize=(12,11))
+for i in range(len(attributeNames) - 2):
+    plt.semilogx(lambdas, mean_w_vs_lambda.T[:, i+1], color=colormap(i),
+                 linestyle=line_styles[i % len(line_styles)],
+                 marker=markers[i % len(markers)], label=attributeNames[i+1], markersize=5)
+
 xlabel('Regularization factor')
 ylabel('Mean Coefficient Values')
 grid()
-legend(attributeNames[1:], loc='best')
+legend(attributeNames[1:], loc='center left', bbox_to_anchor=(1, 0.5))
+plt.tight_layout(rect=[0,0,1,1])
+plt.savefig("coefficient_values_error.pdf", bbox_inches='tight')
+show()
 
-subplot(1,2,2)
+figure(figsize=(12,8))
 title('Optimal lambda: 1e{0}'.format(np.log10(opt_lambda)))
 loglog(lambdas,train_err_vs_lambda.T,'b.-',lambdas,test_err_vs_lambda.T,'r.-')
 xlabel('Regularization factor')
@@ -79,5 +71,5 @@ ylabel('Squared error (crossvalidation)')
 legend(['Train error','Validation error'])
 grid()
 
-plt.savefig("generalization error.png", dpi=500)  # save image, and set dpi
+plt.savefig("generalization_error.pdf", bbox_inches='tight')
 show()
