@@ -1,59 +1,57 @@
 #%%
-from sklearn.preprocessing import StandardScaler, LabelBinarizer 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from toolbox_02450 import rlr_validate
-from matplotlib.pylab import (figure, semilogx, loglog, xlabel, ylabel, legend, title, subplot, show, grid)
+from matplotlib.pylab import (figure, loglog, xlabel, ylabel, legend, title, show, grid)
 
 data = pd.read_csv('dropout_data.csv', delimiter=';')
-# data.columns = [col.replace('\t', '') for col in data.columns]
-data_no_target = data.drop(columns=['Target']) # delete target column
-data_matrix = data_no_target.values  # data matrix
-target = data['Target']
-attributeNames = data_no_target.columns.tolist()
-classNames = target.unique().tolist()
-class_num = len(classNames)
-class_name_mapping = {className: index for index, className in enumerate(classNames)}
-target_to_num = [class_name_mapping[className] for className in target] # drop out = 0, graduate = 1, enrolled = 2
-one_hot_encoded = LabelBinarizer().fit_transform(target_to_num)
+data.columns = [col.replace('\t', '') for col in data.columns]
 
 # revise partial data according to appendix of reference
-for col_index in [0,1,3,5,7,8,9,10,11]:
-        current_column = data_matrix[:, col_index]
+for col_index in [0,1,3,5,6,7,8,9]:
+        current_column = data.values[:, col_index]
         unique_values = np.unique(current_column)
         unique_values.sort()
         value_to_rank = {value: rank +1 for rank, value in enumerate(unique_values)}
-        data_matrix[:, col_index] = np.vectorize(value_to_rank.get)(current_column)
+        data.values[:, col_index] = np.vectorize(value_to_rank.get)(current_column)
 
-X = data_matrix
-y = X[:, 6]
-X = np.delete(X, 6, axis=1)
-attributeNames.remove('Previous qualification (grade)')
+
+
+features = data.drop(columns=['Target', 'Previous qualification (grade)', 'Admission grade'])
+y = data['Previous qualification (grade)'].values
+X = features.values  # Data matrix
+attributeNames = features.columns.tolist()
+N, M = X.shape  # N = Number of data objects, M = Number of attributes
+
+
+# Add offset attribute
+X = np.concatenate((np.ones((X.shape[0],1)), X),1)
 attributeNames = [u'Offset']+attributeNames
+M = M+1
+
 ################
 # regression_a #
 ################
-
 #%%
 ## Crossvalidation
 # Create crossvalidation partition for evaluation
 K = 10
 
-lambdas = np.logspace(-8, 8, 100)
+lambdas = np.logspace(-2, 7, 50)
 opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X, y, lambdas, K)
 
 # Display the results for the last cross-validation fold
 
-colormap = plt.get_cmap('tab20', len(attributeNames) - 1)
+colormap = plt.get_cmap('tab20', len(attributeNames))
 markers = ['o', 's', 'D', 'v', '<', '>', 'p']
 line_styles = ['-', '--', '-.', ':']
 
 figure(figsize=(12,11))
-for i in range(len(attributeNames) - 2):
-    plt.semilogx(lambdas, mean_w_vs_lambda.T[:, i+1], color=colormap(i),
+for i in range(len(attributeNames) - 1):
+    plt.semilogx(lambdas, mean_w_vs_lambda.T[:, i + 1], color=colormap(i),
                  linestyle=line_styles[i % len(line_styles)],
-                 marker=markers[i % len(markers)], label=attributeNames[i+1], markersize=5)
+                 marker=markers[i % len(markers)], label=attributeNames[i + 1], markersize=5)
 
 xlabel('Regularization factor')
 ylabel('Mean Coefficient Values')
