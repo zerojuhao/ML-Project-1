@@ -59,7 +59,8 @@ features = data.drop(columns=['Target', 'Previous qualification (grade)', 'Admis
 y = data['Previous qualification (grade)'].values
 X = features.values  # Data matrix
 attributeNames = features.columns.tolist()
-
+# Normalize data
+X = stats.zscore(X)
 # X = data_matrix
 # y = X[:, 6]
 # X = np.delete(X, 6, axis=1)
@@ -76,7 +77,7 @@ N, M = X.shape
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 attributeNames = [u'Offset']+attributeNames
 M = M+1
-K = 3
+K = 10
 CV = model_selection.KFold(K, shuffle=True)
 Error_train = np.empty((K,1))
 Error_test = np.empty((K,1))
@@ -109,7 +110,7 @@ for train_index, test_index in CV.split(X,y):
     y_train = y[train_index]
     X_test = X[test_index]
     y_test = y[test_index]
-    internal_cross_validation = 3
+    internal_cross_validation = 10
     lambdas = np.logspace(-8, 8, 100)
 
     # receive output
@@ -138,7 +139,7 @@ for train_index, test_index in CV.split(X,y):
                                 # torch.nn.Softmax(dim=1) # softmax for multi-class
                                 )
     loss_fn = torch.nn.MSELoss()
-    max_iter = 1000 #200 700 50 500
+    max_iter = 20000 #200 700 50 500
     net, final_loss, learning_curve = train_neural_net(model,
                                                     loss_fn,
                                                     X=X_train_ann,
@@ -147,7 +148,6 @@ for train_index, test_index in CV.split(X,y):
                                                     max_iter=max_iter)
     
     # Determine estimated class labels for test set
-    print('best loss', final_loss)
     y_test_est_ann = net(X_test_ann) # activation of final note, i.e. prediction of network            y_test_ann = y_test_ann.type(dtype=torch.uint8)
     y_test_ann = y_test_ann.float()
     y_test_est_ann = y_test_est_ann.float()
@@ -165,10 +165,10 @@ for train_index, test_index in CV.split(X,y):
     # Baseline
     y_mean_train = np.mean(y_train)
     y_pred_baseline = np.full(len(y_test), y_mean_train)
-    error_bl = ((y_pred_baseline - y_test) ** 2).mean().item()
+    error_bl = np.mean((y_pred_baseline - y_test) ** 2)
     
     
-    # calculate t-test of each inner fold
+    # calculate t-test
     z_al, CI_al, p_al = ttest_twomodels(y_test, y_test_est_ann.data.numpy(), y_test_pred, alpha=0.05, loss_norm_p=1)
     z_ab, CI_ab, p_ab = ttest_twomodels(y_test, y_test_est_ann.data.numpy(), y_pred_baseline, alpha=0.05, loss_norm_p=1)
     z_lb, CI_lb, p_lb = ttest_twomodels(y_test, y_test_pred, y_pred_baseline, alpha=0.05, loss_norm_p=1)
@@ -189,7 +189,7 @@ for train_index, test_index in CV.split(X,y):
     p_lb_r.append(np.mean(p_lb))
     
     print('\n',
-        'Optimal Hidden units: {0}'.format(np.mean(best_units_num)), '\n',
+        'Optimal Hidden units: {0}'.format(best_units_num), '\n',
         # 'ANN error: {0}'.format(np.mean(min_error_ann)), '\n',
         'ANN error: {0}'.format(error_ann), '\n',
         'Optimal λ: {0}'.format(np.log10(opt_lambda)), '\n',
