@@ -19,7 +19,7 @@ from toolbox_02450 import train_neural_net, draw_neural_net, visualize_decision_
 from scipy import stats
 import statsmodels.stats.contingency_tables as tbl
 from collections import Counter
-
+import torch.optim as optim
 
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  
 plt.rcParams['axes.unicode_minus'] = False  # display “ - ”
@@ -124,34 +124,41 @@ for train_index, test_index in CV.split(X,y):
     
     X_train[:, 1:] = (X_train[:, 1:] - mu[k, :] ) / sigma[k, :] 
     X_test[:, 1:] = (X_test[:, 1:] - mu[k, :] ) / sigma[k, :]
-    X_train_ann = torch.Tensor(X_train)
-    y_train_ann = torch.Tensor(y_train)
-    X_test_ann = torch.Tensor(X_test)
-    y_test_ann = torch.Tensor(y_test)
-    y_train_ann = y_train_ann.view(-1,1)
-    y_test_ann = y_test_ann.view(-1,1)
+    device = torch.device('cuda:0')
     
+    X_train_ann = torch.Tensor(X_train).to(device)
+    y_train_ann = torch.Tensor(y_train).to(device)
+    X_test_ann = torch.Tensor(X_test).to(device)
+    y_test_ann = torch.Tensor(y_test).to(device)
+    y_train_ann = y_train_ann.view(-1,1).to(device)
+    y_test_ann = y_test_ann.view(-1,1).to(device)
+    
+
     # ANN
-    model = lambda: torch.nn.Sequential(
-                                torch.nn.Linear(M, best_units_num), #M features to H hiden units
-                                torch.nn.ReLU(),
-                                torch.nn.Linear(best_units_num, 1), # H hidden units to 3 output neuron, cause we have 3 targets
-                                # torch.nn.Softmax(dim=1) # softmax for multi-class
-                                )
+    model = torch.nn.Sequential(
+        torch.nn.Linear(M, best_units_num),  # M features to H hidden units
+        torch.nn.ReLU(),
+        torch.nn.Dropout(p=0.2),
+        torch.nn.Linear(best_units_num, 1),  # H hidden units to 1 output neuron for regression
+    ).to(device)
     loss_fn = torch.nn.MSELoss()
-    max_iter = 20000 #200 700 50 500
-    net, final_loss, learning_curve = train_neural_net(model,
-                                                    loss_fn,
-                                                    X=X_train_ann,
-                                                    y=y_train_ann,
-                                                    n_replicates=1, # 3 1 10 3
-                                                    max_iter=max_iter)
-    
-    # Determine estimated class labels for test set
-    y_test_est_ann = net(X_test_ann) # activation of final note, i.e. prediction of network            y_test_ann = y_test_ann.type(dtype=torch.uint8)
-    y_test_ann = y_test_ann.float()
-    y_test_est_ann = y_test_est_ann.float()
-    error_ann = ((y_test_ann - y_test_est_ann) ** 2).mean().item()
+    loss_fn = loss_fn.to(device)
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay= 0.0005)
+    max_iter = 10000
+    for iteration in range(max_iter):
+        X_batch = X_train_ann
+        y_batch = y_train_ann
+        predictions = model(X_batch)
+        loss = loss_fn(predictions, y_batch)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    model.eval()
+    y_test_est_ann = model(X_test_ann).float()
+    y_test_ann = y_test_ann
+    y_test_est_ann = y_test_est_ann
+    error_ann = ((y_test_ann - y_test_est_ann) ** 2).mean()
     
     # Linear Regression
     Xty = X_train.T @ y_train
@@ -169,8 +176,8 @@ for train_index, test_index in CV.split(X,y):
     
     
     # calculate t-test
-    z_al, CI_al, p_al = ttest_twomodels(y_test, y_test_est_ann.data.numpy(), y_test_pred, alpha=0.05, loss_norm_p=1)
-    z_ab, CI_ab, p_ab = ttest_twomodels(y_test, y_test_est_ann.data.numpy(), y_pred_baseline, alpha=0.05, loss_norm_p=1)
+    z_al, CI_al, p_al = ttest_twomodels(y_test, y_test_est_ann.cpu().data.numpy(), y_test_pred, alpha=0.05, loss_norm_p=1)
+    z_ab, CI_ab, p_ab = ttest_twomodels(y_test, y_test_est_ann.cpu().data.numpy(), y_pred_baseline, alpha=0.05, loss_norm_p=1)
     z_lb, CI_lb, p_lb = ttest_twomodels(y_test, y_test_pred, y_pred_baseline, alpha=0.05, loss_norm_p=1)
 
     z_al_r.append(z_al)
