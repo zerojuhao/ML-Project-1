@@ -208,7 +208,7 @@ def rlr_validate_mse(X,y,lambdas,cvf): # ANN and Baseline added, use MSE as loss
     different calculation method of error : mse, mean square error
     '''
     
-    hidden_units = [1,8,16,32,64,128,256] # set different hiden units
+    hidden_units = [1,8,16,24,32,40,48,56,64,96,128] # set different hiden units
 
     CV = model_selection.KFold(cvf, shuffle=True)
     M = X.shape[1]
@@ -221,7 +221,7 @@ def rlr_validate_mse(X,y,lambdas,cvf): # ANN and Baseline added, use MSE as loss
     y = y.squeeze()
     
     for train_index, test_index in CV.split(X,y): # inner fold start
-        print('\n Inner Crossvalidation Fold: {0}/{1}'.format(f+1,cvf))
+        # print('\n Inner Crossvalidation Fold: {0}/{1}'.format(f+1,cvf))
         X_train = X[train_index]
         y_train = y[train_index]
         X_test = X[test_index]
@@ -244,17 +244,19 @@ def rlr_validate_mse(X,y,lambdas,cvf): # ANN and Baseline added, use MSE as loss
         y_test_ann = y_test_ann.view(-1, 1).to(device)
 
         for i, h in enumerate(hidden_units):
+            #print('hidden units number:', h)
 
             model = torch.nn.Sequential(
                 torch.nn.Linear(M, h),  # M fea3tures to H hidden units
+                torch.nn.BatchNorm1d(h),
                 torch.nn.ReLU(),
                 torch.nn.Dropout(p=0.2),
                 torch.nn.Linear(h, 1),  # H hidden units to 1 output neuron for regression
             ).to(device)
             loss_fn = torch.nn.MSELoss()
             loss_fn = loss_fn.to(device)
-            optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay= 0.0005)
-            max_iter = 10000 #200 700 50 500
+            optimizer = optim.Adam(model.parameters(), weight_decay= 0.0005)
+            max_iter = 10
             for iteration in range(max_iter):
                 X_batch = X_train_ann
                 y_batch = y_train_ann
@@ -269,6 +271,7 @@ def rlr_validate_mse(X,y,lambdas,cvf): # ANN and Baseline added, use MSE as loss
             y_test_ann = y_test_ann
             y_test_est_ann = y_test_est_ann
             error_ann[f,i] = ((y_test_ann - y_test_est_ann) ** 2).mean(axis=0)
+            #print('\n\tANN loss: {}\n'.format(error_ann[f,i]))
             # print('hidden units number: ', h)
             # print('\n ANN loss: {}\n'.format(error_ann[f,i]))
         
@@ -323,7 +326,7 @@ def rlr_validate_nmo(X,y,lambdas,cvf=10):
     y = y.squeeze()
     
     for train_index, test_index in CV.split(X,y):
-        print('\n Inner Crossvalidation Fold: {0}/{1}'.format(f+1,cvf))
+        #print('\n Inner Crossvalidation Fold: {0}/{1}'.format(f+1,cvf))
         X_train = X[train_index]
         y_train = y[train_index]
         X_test = X[test_index]
@@ -347,9 +350,10 @@ def rlr_validate_nmo(X,y,lambdas,cvf=10):
 
         i = 0 # Record what number of cycles it is now
         for h in hidden_units:
-            print('hidden units number:', h)
+            #print('hidden units number:', h)
             model = torch.nn.Sequential(
                 torch.nn.Linear(M, h),  # M fea3tures to H hidden units
+                torch.nn.BatchNorm1d(h),
                 torch.nn.ReLU(),
                 torch.nn.Dropout(p=0.2),
                 torch.nn.Linear(h, 3),  # H hidden units to 1 output neuron for regression
@@ -358,7 +362,8 @@ def rlr_validate_nmo(X,y,lambdas,cvf=10):
             loss_fn = torch.nn.CrossEntropyLoss()
             loss_fn = loss_fn.to(device)
             optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay= 0.0005)
-            max_iter = 10000
+            max_iter = 10
+            
             for iteration in range(max_iter):
                 X_batch = X_train_ann
                 y_batch = y_train_ann
@@ -376,7 +381,7 @@ def rlr_validate_nmo(X,y,lambdas,cvf=10):
             e = (y_ann_label != y_test_ann)
             # print('Number of miss-classifications for ANN:\n\t {0} out of {1}'.format(sum(e),len(e)))
             error_ann[f,i] = (sum(e)/len(y_test_ann)).detach().cpu().numpy()
-            print('\n\tANN loss: {}\n'.format(error_ann[f,i]))
+            #print('\n\tANN loss: {}\n'.format(error_ann[f,i]))
             i= i+1
             #print('\n\tANN loss: {}\n'.format(error_ann))
 
@@ -400,7 +405,7 @@ def rlr_validate_nmo(X,y,lambdas,cvf=10):
         for l in range(0,len(lambdas)):
             # # Compute parameters for current value of lambda and current CV fold
    
-            mdl = LogisticRegression(penalty='l2', C=1/lambdas[l], max_iter=1000)
+            mdl = LogisticRegression(penalty='l2', C=1/lambdas[l], max_iter=500)
             mdl.fit(X_train, y_train)
             y_train_est = mdl.predict(X_train).T
             y_test_est = mdl.predict(X_test).T

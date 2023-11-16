@@ -113,10 +113,13 @@ for train_index, test_index in CV.split(X,y):
     y_train_ann = y_train_ann.view(-1).long().to(device)
     y_test_ann = y_test_ann.view(-1).long().to(device)
     
+    
+    best_units_num = 24
 
     # ANN
     model = torch.nn.Sequential(
         torch.nn.Linear(M, best_units_num),  # M features to H hidden units
+        torch.nn.BatchNorm1d(best_units_num),
         torch.nn.ReLU(),
         torch.nn.Dropout(p=0.2),
         torch.nn.Linear(best_units_num, 3),  # H hidden units to 1 output neuron for regression
@@ -124,8 +127,8 @@ for train_index, test_index in CV.split(X,y):
     ).to(device)
     loss_fn = torch.nn.CrossEntropyLoss()
     loss_fn = loss_fn.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=0.001,weight_decay=1e-4)
-    max_iter = 10000
+    optimizer = optim.Adam(model.parameters(),weight_decay=0.0005)
+    max_iter = 20000
     for iteration in range(max_iter):
         X_batch = X_train_ann
         y_batch = y_train_ann
@@ -157,9 +160,9 @@ for train_index, test_index in CV.split(X,y):
     error_bl = (sum(e_bl)/len(y_test))
     
     # calculate mcnemar of each inner fold
-    thetahat_al, CI_al, p_al = mcnemar(y_test, y_test_est_ann.cpu().data.numpy(), y_test_est, alpha=0.1)
-    thetahat_ab, CI_ab, p_ab = mcnemar(y_test, y_test_est_ann.cpu().data.numpy(), y_test_est_baseline, alpha=0.1)
-    thetahat_lb, CI_lb, p_lb = mcnemar(y_test, y_test_est, y_test_est_baseline,alpha=0.1)
+    thetahat_al, CI_al, p_al = mcnemar(y_test, y_test_est_ann.cpu().data.numpy(), y_test_est, alpha=0.05)
+    thetahat_ab, CI_ab, p_ab = mcnemar(y_test, y_test_est_ann.cpu().data.numpy(), y_test_est_baseline, alpha=0.05)
+    thetahat_lb, CI_lb, p_lb = mcnemar(y_test, y_test_est, y_test_est_baseline,alpha=0.05)
 
     thetahat_al_c.append(thetahat_al)
     CI_al_c.append(CI_al)
@@ -195,24 +198,33 @@ upper_bounds_al = [row[1] for row in CI_al_c]
 column_means_al = [sum(row) / len(row) for row in CI_al_c]
 center_line1_al = np.mean(np.concatenate([lower_bounds_al,upper_bounds_al]))
 x = np.arange(1,K+1)
-plt.figure(figsize=(8, 3))
+plt.figure(figsize=(8, 4))
 for x, start, end in zip(x, lower_bounds_al, upper_bounds_al):
     plt.bar(x, height=end-start, bottom=start, width = 0.2)
     
-plt.scatter(np.arange(1, k+1), np.array(column_means_al), color='black', marker='o', label='Mean Value')
-plt.axhline(center_line1_al, color='red', linestyle='--', label='mean')
-plt.xlabel('K-Kold')
+plt.scatter(np.arange(1, k+1), column_means_al, color='black', marker='o', label='Mean Value')
+plt.axhline(center_line1_al, color='red', linestyle='--', label='Mean')
+plt.xlabel('K-Fold')
 plt.ylabel('Confidence Interval')
-plt.title('Confidence Interval: ANN vs Logistic Regression')
+plt.title('ANN vs Logistic Regression')
 plt.xticks(np.arange(1, k+1, 1))
+plt.legend()
+plt.savefig('ANN vs Logistic Regression Confidence Interval.pdf', dpi=1000)
 plt.show()
-plt.figure(figsize=(8, 3))
-plt.plot(np.arange(1, k+1), p_al_c, marker='o', linestyle='-', color = 'red')
+
+
+plt.figure(figsize=(8, 4))
+plt.plot(np.arange(1, k+1), p_al_c, marker='o', linestyle='-', color = 'purple')
+plt.axhline(np.mean(p_al_c), color='green', linestyle='--', label='Mean')
+plt.axhline(0.05, color='red', linestyle='--', label='Threshold=0.05')
 plt.xlabel('K-Fold')
 plt.ylabel('P Value')
-plt.title('P Value: ANN vs Logistic Regression')
+plt.title('ANN vs Logistic Regression')
 plt.xticks(np.arange(1, k+1, 1))
+plt.legend()
+plt.savefig('ANN vs Logistic Regression P Value.pdf', dpi=1000)
 plt.show()
+
 
 # show ANN vs Baseline
 lower_bounds_ab = [row[0] for row in CI_ab_c]
@@ -220,24 +232,32 @@ upper_bounds_ab = [row[1] for row in CI_ab_c]
 column_means_ab = [sum(row) / len(row) for row in CI_ab_c]
 center_line1_ab = np.mean(np.concatenate([lower_bounds_ab,upper_bounds_ab]))
 x = np.arange(1,K+1)
-plt.figure(figsize=(8, 3))
+plt.figure(figsize=(8, 4))
 for x, start, end in zip(x, lower_bounds_ab, upper_bounds_ab):
     plt.bar(x, height=end-start, bottom=start, width = 0.2)
     
-plt.scatter(np.arange(1, k+1), np.array(column_means_ab), color='black', marker='o', label='Mean Value')
-plt.axhline(center_line1_ab, color='red', linestyle='--', label='mean')
+plt.scatter(np.arange(1, k+1), column_means_ab, color='black', marker='o', label='Mean Value')
+plt.axhline(center_line1_ab, color='red', linestyle='--', label='Mean')
 plt.xlabel('K-Fold')
 plt.ylabel('Confidence Interval')
-plt.title('Confidence Interval: ANN vs Baseline')
+plt.title('ANN vs Baseline')
 plt.xticks(np.arange(1, k+1, 1))
+plt.legend()
+plt.savefig('ANN vs Baseline Confidence Interval.pdf', dpi=1000)
 plt.show()
-plt.figure(figsize=(8, 3))
+
+
+plt.figure(figsize=(8, 4))
 plt.plot(np.arange(1, k+1), p_ab_c, marker='o', linestyle='-', color = 'red')
+plt.axhline(np.mean(p_ab_c), color='green', linestyle='--', label='Mean')
 plt.xlabel('K-Fold')
 plt.ylabel('P Value')
-plt.title('P Value: ANN vs Baseline')
+plt.title('ANN vs Baseline')
 plt.xticks(np.arange(1, k+1, 1))
+plt.legend()
+plt.savefig('ANN vs Baseline P Value.pdf', dpi=1000)
 plt.show()
+
 
 # show Logistic Regression vs Baseline
 lower_bounds_lb = [row[0] for row in CI_ab_c]
@@ -245,21 +265,28 @@ upper_bounds_lb = [row[1] for row in CI_ab_c]
 column_means_lb = [sum(row) / len(row) for row in CI_ab_c]
 center_line1_lb = np.mean(np.concatenate([lower_bounds_lb,upper_bounds_lb]))
 x = np.arange(1,K+1)
-plt.figure(figsize=(8, 3))
+plt.figure(figsize=(8, 4))
 for x, start, end in zip(x, lower_bounds_lb, upper_bounds_lb):
     plt.bar(x, height=end-start, bottom=start, width = 0.2)
     
 plt.scatter(np.arange(1, k+1), np.array(column_means_lb), color='black', marker='o', label='Mean Value')
-plt.axhline(center_line1_lb, color='red', linestyle='--', label='mean')
+plt.axhline(center_line1_lb, color='red', linestyle='--', label='Mean')
 plt.xlabel('K-Fold')
 plt.ylabel('Confidence Interval')
-plt.title('Confidence Interval: Logistic Regression vs Baseline')
+plt.title('Logistic Regression vs Baseline')
 plt.xticks(np.arange(1, k+1, 1))
+plt.legend()
+plt.savefig('Logistic Regression vs Baseline Confidence Interval.pdf', dpi=1000)
 plt.show()
-plt.figure(figsize=(8, 3))
+
+
+plt.figure(figsize=(8, 4))
 plt.plot(np.arange(1, k+1), p_lb_c, marker='o', linestyle='-', color = 'red')
+plt.axhline(np.mean(p_lb_c), color='green', linestyle='--', label='Mean')
 plt.xlabel('K-Fold')
 plt.ylabel('P Value')
-plt.title('P Value: Logistic Regression vs Baseline')
+plt.title('Logistic Regression vs Baseline')
 plt.xticks(np.arange(1, k+1, 1))
+plt.legend()
+plt.savefig('Logistic Regression vs Baseline P Value.pdf', dpi=1000)
 plt.show()

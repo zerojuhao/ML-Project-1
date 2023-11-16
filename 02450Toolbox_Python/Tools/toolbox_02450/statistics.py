@@ -52,7 +52,7 @@ def mcnemar(y_true, yhatA, yhatB, alpha=0.05):
     nn[1,0] = sum(~c1 & c2)
     nn[1,1] = sum(~c1 & ~c2)
 
-    n = sum(nn.flat);
+    n = sum(nn.flat)
     n12 = nn[0,1]
     n21 = nn[1,0]
 
